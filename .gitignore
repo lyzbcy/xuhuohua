@@ -29,6 +29,12 @@ software/build/
 !napcat-plugin-auto-tasks/dist/
 !douyin-auto-fire/config.example.json
 
+# ===== 打包产物（项目根的测试实例）=====
+/xuhuohua.exe
+/_internal/
+/xuhuohua-windows-x64.zip
+/xuhuohua-macos.zip
+
 # ===== 系统杂项 =====
 .DS_Store
 Thumbs.db

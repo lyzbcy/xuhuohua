@@ -17,7 +17,6 @@ else:
     UI_DIR = SOFTWARE_DIR / "ui"
 
 PROJECT_ROOT = SOFTWARE_DIR                                   # 续火花/
-PROJECT_ROOT = SOFTWARE_DIR.parent                    # 续火花/
 DOUYIN_DIR = PROJECT_ROOT / "douyin-auto-fire"
 DOUYIN_VENV_PY = DOUYIN_DIR / ".venv" / "Scripts" / "python.exe"
 DOUYIN_CONFIG = DOUYIN_DIR / "config.json"
