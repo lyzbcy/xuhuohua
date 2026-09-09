@@ -29,7 +29,32 @@ SEND_BUTTONS = (
 )
 
 
+async def _dismiss_modal(page: Page) -> None:
+    """[续火花项目热修复] 清除 IM 弹窗：按钮文案 → 右上角 X → Esc → 点遮罩。"""
+    sel = '#pc-im-popup-container .semi-modal-wrap'
+    try:
+        modal = page.locator(sel)
+        if not await modal.count() or not await modal.first.is_visible():
+            return
+        for text in ("知道了", "我知道了", "确定", "同意并继续", "同意", "继续", "以后再说", "取消", "关闭"):
+            btn = page.locator(f'{sel} button:has-text("{text}")')
+            if await btn.count():
+                await btn.first.click(timeout=1500)
+                await page.wait_for_timeout(600)
+                return
+        x = page.locator(f'{sel} .semi-modal-close, {sel} [aria-label="关闭"]')
+        if await x.count():
+            await x.first.click(timeout=1500)
+            await page.wait_for_timeout(600)
+            return
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(400)
+    except Exception:
+        pass
+
+
 async def _trigger_send(page: Page) -> None:
+    await _dismiss_modal(page)          # 发送前清弹窗
     button = None
     for selector in SEND_BUTTONS:
         candidate = page.locator(selector).first
@@ -40,7 +65,12 @@ async def _trigger_send(page: Page) -> None:
         except Exception:
             continue
     if button is not None:
-        await button.click()
+        try:
+            await button.click(timeout=8_000)
+        except Exception:
+            # 大概率弹窗中途弹出拦截了点击：再清一次并强制点击
+            await _dismiss_modal(page)
+            await button.click(force=True, timeout=8_000)
     else:
         await page.keyboard.press("Enter")
 

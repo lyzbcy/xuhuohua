@@ -84,6 +84,9 @@ class Api:
     def douyin_run(self, dry_run=False):
         return douyin.run(bool(dry_run))
 
+    def douyin_fix_uncertain(self):
+        return douyin.fix_uncertain()
+
     def douyin_get_config(self):
         return {"ok": True, "config": douyin.get_config()}
 

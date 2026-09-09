@@ -196,6 +196,17 @@ $("#dy-login-btn").addEventListener("click", (e) => withBtn(e.target, async () =
 }));
 $("#dy-dryrun").addEventListener("click", (e) => withBtn(e.target, () => doRun(true)));
 $("#dy-run").addEventListener("click", (e) => withBtn(e.target, () => doRun(false)));
+$("#dy-fix").addEventListener("click", (e) => withBtn(e.target, async () => {
+  if (!confirm("将清除「确认没发出去」的残留记录并立即重发一轮（今天已成功发过的好友仍会跳过）。继续？")) return;
+  try {
+    const r = await call("douyin_fix_uncertain");
+    if (r.removed && r.removed.length) {
+      setStatus("已清除 " + r.removed.length + " 条残留（" + r.removed.join("、") + "），补发运行中…");
+    } else {
+      setStatus(r.msg);
+    }
+  } catch (err) { alert("补发失败：" + err.message); }
+}));
 
 async function doRun(dry) {
   if (state && state.douyin && (state.douyin.friends || []).filter(f => !PLACEHOLDER_RE.test(f)).length === 0) {

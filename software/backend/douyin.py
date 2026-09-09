@@ -179,6 +179,12 @@ def _pump(key: str, proc: subprocess.Popen) -> None:
             real = name_map.get(alias, "")
             logger.fail("[抖音] 好友「{0}」发送失败（日志别名 {1}）：请确认这个名字与抖音搜索面板显示的完全一致（含表情符号）。推荐在「抖音」页用「从抖音拉取最近会话」重新勾选".format(real or alias, alias), source="douyin")
             continue
+        m2 = re.search(r"跳过当天已处理或结果不确定的消息: (好友\d+)", line)
+        if m2:
+            alias = m2.group(1)
+            real = name_map.get(alias, "")
+            logger.warn("[抖音] 好友「{0}」今天已发过（或上次尝试结果不确定），本轮跳过。若是『不确定』残留，可点「补发」按钮".format(real or alias), source="douyin")
+            continue
         logger.log("OUT", line, source="douyin")
     code = proc.wait()
     if code == 0:
@@ -215,3 +221,52 @@ def run(dry_run: bool = False) -> dict:
 def proc_status() -> dict:
     with _lock:
         return {k: (p.poll() is None) for k, p in _procs.items()}
+
+
+def fix_uncertain() -> dict:
+    """清除"结果不确定"的发送占位记录并立即补发。
+    只清今天、且最近一轮结果证实 sent=0（确认没发出去）的好友；
+    绝不动 success 记录（防重复发送）。"""
+    from backend.paths import DOUYIN_DIR
+    hist_path = DOUYIN_DIR / "artifacts" / "history.json"
+    result_path = DOUYIN_DIR / "artifacts" / "result.json"
+    today = __import__("datetime").date.today().isoformat()
+    if not hist_path.exists():
+        return {"ok": False, "msg": "还没有发送历史记录"}
+    try:
+        hist = json.loads(hist_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"ok": False, "msg": "发送历史文件损坏"}
+    # 最近一轮里"确实没发出去"的目标名单（sent=0）
+    not_sent = set()
+    if result_path.exists():
+        try:
+            res = json.loads(result_path.read_text(encoding="utf-8"))
+            if res.get("finished_at", "").startswith(today):
+                for r in res.get("results", []):
+                    if r.get("sent") == 0:
+                        not_sent.add(r.get("target", ""))
+        except (OSError, json.JSONDecodeError):
+            pass
+    removed, kept = [], []
+    for k in list(hist.keys()):
+        parts = k.split(":")
+        if len(parts) < 4 or parts[1] != today:
+            continue
+        if hist[k].get("status") == "unknown":
+            target = parts[2]
+            # 引擎打码名也按"今天确实没发出"处理（防重复宁可保守）；有实名证据的更稳
+            if target in not_sent or not target.startswith("好友"):
+                del hist[k]
+                removed.append(target)
+            else:
+                kept.append(target)
+    if removed:
+        hist_path.write_text(json.dumps(hist, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.ok("[抖音] 已清除 {0} 条『未发出』的残留记录（{1}），准备补发".format(
+            len(removed), "、".join(removed)), source="douyin")
+    else:
+        logger.info("[抖音] 没有『确认未发出』的残留记录，无需补发", source="douyin")
+    r = run(dry_run=False)
+    return {"ok": True, "removed": removed, "kept_unknown": kept, "run": r,
+            "msg": "已清除 {0} 条残留并启动补发".format(len(removed)) if removed else "无残留，已照常启动一轮发送"}
