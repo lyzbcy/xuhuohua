@@ -1,0 +1,16 @@
+[Unit]
+Description=Douyin Auto Sender
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=douyin-sender
+Group=douyin-sender
+WorkingDirectory=/opt/douyin-auto-sender
+Environment=HEADLESS=true
+ExecStart=/opt/douyin-auto-sender/.venv/bin/python run.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/douyin-auto-sender/artifacts

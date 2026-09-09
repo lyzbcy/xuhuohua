@@ -1,0 +1,12 @@
+{
+  "比心": {
+    "category": "常用",
+    "accessible_name": "比心",
+    "fallback_index": 3
+  },
+  "开心": {
+    "category": "常用",
+    "accessible_name": "开心",
+    "fallback_index": 5
+  }
+}

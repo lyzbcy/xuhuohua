@@ -1,0 +1,43 @@
+name: Sync Code to CNB
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Sync main and tags to CNB
+        env:
+          CNB_TOKEN: ${{ secrets.CNB_TOKEN }}
+        shell: bash
+        run: |
+          cat > "$RUNNER_TEMP/cnb-askpass.sh" <<'EOF'
+          #!/bin/sh
+          case "$1" in
+            *Username*) echo "cnb" ;;
+            *Password*) echo "$CNB_TOKEN" ;;
+          esac
+          EOF
+
+          chmod +x "$RUNNER_TEMP/cnb-askpass.sh"
+          export GIT_ASKPASS="$RUNNER_TEMP/cnb-askpass.sh"
+          export GIT_TERMINAL_PROMPT=0
+
+          git remote add cnb https://cnb.cool/1mev/douyin-auto-fire.git
+          git fetch cnb main
+          git push --force-with-lease cnb HEAD:main
+          git push cnb --tags

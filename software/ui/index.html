@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>续火花控制台</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+  <!-- 侧边栏 -->
+  <aside class="sidebar">
+    <div class="brand">
+      <img src="assets/第8弹-想你.png" alt="logo" class="brand-logo">
+      <div>
+        <div class="brand-name">续火花控制台</div>
+        <div class="brand-sub">QQ · 抖音 一站续火</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-page="dashboard">🏠 仪表盘</button>
+      <button class="nav-item" data-page="douyin">🎵 抖音</button>
+      <button class="nav-item" data-page="qq">🐧 QQ</button>
+      <button class="nav-item" data-page="pool">💬 话术库</button>
+      <button class="nav-item" data-page="schedule">⏰ 定时</button>
+      <button class="nav-item" data-page="logs">📋 日志</button>
+      <button class="nav-item" data-page="about">🐟 关于</button>
+    </nav>
+    <div class="sidebar-foot">v<span id="ver-foot">…</span> · 捞鱼工作室</div>
+  </aside>
+
+  <!-- 主区域 -->
+  <main class="main">
+    <!-- 仪表盘 -->
+    <section class="page active" id="page-dashboard">
+      <h2>仪表盘</h2>
+      <div class="cards">
+        <div class="card" id="card-douyin">
+          <div class="card-title">🎵 抖音</div>
+          <div class="card-status" id="dash-douyin">检查中…</div>
+          <div class="card-sub" id="dash-douyin-sub"></div>
+        </div>
+        <div class="card" id="card-qq">
+          <div class="card-title">🐧 QQ</div>
+          <div class="card-status" id="dash-qq">检查中…</div>
+          <div class="card-sub" id="dash-qq-sub"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">⏰ 每日定时</div>
+          <div class="card-status" id="dash-sched">检查中…</div>
+          <div class="card-sub" id="dash-sched-sub"></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="dash-run">🔥 立即续抖音火花</button>
+        <button class="btn primary" id="dash-qq-send">🔥 立即续火花（QQ）</button>
+        <button class="btn" id="dash-dryrun">🧪 抖音演练（不真发）</button>
+        <button class="btn" id="dash-qq-start">🐧 启动 QQ</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">每日计划（到点自动执行）</div>
+        <div id="dash-plan"></div>
+        <p class="hint">到点时电脑需开机且联网。改时间：抖音在「定时」页，QQ 在「QQ」页。</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">实时动态</div>
+        <div class="feed" id="dash-feed"></div>
+      </div>
+    </section>
+
+    <!-- 抖音 -->
+    <section class="page" id="page-douyin">
+      <h2>抖音续火花</h2>
+      <div class="panel">
+        <div class="panel-title">第 1 步 · 扫码登录（一次性）</div>
+        <p class="hint">点击按钮会弹出浏览器，用抖音 App 扫码。登录成功后软件<b>自动保存凭证</b>并关闭浏览器，无需其他操作。</p>
+        <div class="status-line" id="dy-login-status"></div>
+        <button class="btn primary" id="dy-login-btn">📲 打开扫码登录</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">第 2 步 · 管理好友</div>
+        <p class="hint">推荐点「从抖音拉取最近会话」勾选（免手打）；也可以手动添加。规则：<b>勾选添加会与现有列表合并，同名只保留一个</b>；「保存好友列表」后以页面列表为准。名字要和抖音显示的完全一致（含表情符号）。</p>
+        <div id="dy-friend-list"></div>
+        <div class="btn-row">
+          <button class="btn small" id="dy-add-friend">＋ 手动添加</button>
+          <button class="btn small" id="dy-fetch-friends">📥 从抖音拉取最近会话</button>
+        </div>
+        <div id="dy-fetch-area" style="display:none">
+          <input type="text" id="dy-fetch-search" placeholder="🔍 输入名字过滤…" style="width:100%;padding:8px 10px;border:1px solid #dcdfe8;border-radius:8px;margin:8px 0">
+          <div class="chk-grid" id="dy-fetch-list"></div>
+          <div class="btn-row"><button class="btn small primary" id="dy-fetch-add">✔ 添加勾选的好友</button></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="dy-save-friends">💾 保存好友列表</button>
+          <span class="hint" id="dy-friend-note" style="margin:0"></span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">第 3 步 · 运行</div>
+        <p class="hint">先演练确认好友都能定位到，再正式发送。之后每天由定时任务自动完成。</p>
+        <div class="btn-row">
+          <button class="btn" id="dy-dryrun">🧪 演练（只找好友，不发消息）</button>
+          <button class="btn primary" id="dy-run">🔥 正式发送</button>
+        </div>
+        <div class="status-line" id="dy-proc"></div>
+      </div>
+    </section>
+
+    <!-- QQ -->
+    <section class="page" id="page-qq">
+      <h2>QQ 续火花</h2>
+      <div class="panel">
+        <div class="panel-title">QQ 引擎（NapCat）</div>
+        <p class="hint">点「启动 QQ」后会依次弹出 2 个窗口：①「是否允许更改」的询问窗 → 点<b>「是」</b>；② 一个<b>黑色日志窗口</b> → 这是续火花的大脑，请<b>最小化、千万别关</b>，关了 QQ 火花就停了。登录过一次后，以后启动<b>自动快速登录，不用扫码</b>；电脑重启后要回来再点一次「启动 QQ」。</p>
+        <div class="status-line" id="qq-run-status"></div>
+        <div class="btn-row">
+          <button class="btn primary" id="qq-start">▶ 启动 QQ</button>
+          <button class="btn danger" id="qq-stop">■ 停止</button>
+        </div>
+      </div>
+      <div class="panel" id="qq-qr-panel" style="display:none">
+        <div class="panel-title">QQ 登录二维码</div>
+        <div class="about-author">
+          <img id="qq-qr-img" alt="登录二维码" style="width:150px;height:150px;border:1px solid #e7e9f0;border-radius:10px;">
+          <div>
+            <p>手机 QQ 扫这个码即可，<b>只需扫这一次</b>，之后每次启动自动快速登录。</p>
+            <p class="hint">🛡️ <b>放心扫</b>：这个二维码只是让续火花程序<b>在这台电脑上</b>登录你的 QQ，不会在任何别的地方登录，不涉及密码，对你的 QQ 账号没有任何负面影响。</p>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">好友续火花（每天定时私聊）</div>
+        <div class="form-row"><label>启用</label>
+          <input type="checkbox" id="fs-enable"></div>
+        <div class="form-row"><label>发送时间</label>
+          <input type="time" step="1" id="fs-time" value="10:00:00"></div>
+        <div class="form-row"><label>对方 QQ 号</label>
+          <input type="text" id="fs-targets" placeholder="多个用英文逗号分隔，如 123456,234567"></div>
+        <p class="hint">💡 推荐点「从 QQ 拉取好友列表」直接勾选（自动带备注名）；不知道 QQ 号也可以手机 QQ 点好友头像查看。</p>
+        <div class="btn-row">
+          <button class="btn small" id="qq-fetch-friends">📥 从 QQ 拉取好友列表</button>
+        </div>
+        <div id="qq-fetch-area" style="display:none">
+          <input type="text" id="qq-fetch-search" placeholder="🔍 输入名字/备注过滤…" style="width:100%;padding:8px 10px;border:1px solid #dcdfe8;border-radius:8px;margin:8px 0">
+          <div class="chk-grid" id="qq-fetch-list"></div>
+          <div class="btn-row"><button class="btn small primary" id="qq-fetch-add">✔ 添加勾选的好友</button></div>
+        </div>
+        <p class="hint">💬 话术不用在这里填：QQ 和抖音共用「话术库」，每天自动随机换一条。</p>
+        <div class="btn-row">
+          <button class="btn primary" id="qq-send-now">🔥 立即续火花（QQ）</button>
+          <span class="hint" style="margin:0">立刻给上面所有 QQ 号随机发一条共享话术。</span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">群续火花（可选）</div>
+        <div class="form-row"><label>启用</label>
+          <input type="checkbox" id="gs-enable"></div>
+        <div class="form-row"><label>发送时间</label>
+          <input type="time" step="1" id="gs-time" value="09:00:00"></div>
+        <div class="form-row"><label>群号</label>
+          <input type="text" id="gs-targets" placeholder="多个用英文逗号分隔"></div>
+        <div class="form-row"><label>话术</label>
+          <input type="text" id="gs-message" placeholder="群里的续火消息"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="qq-save">💾 保存 QQ 配置</button>
+        <span class="hint" id="qq-save-note"></span>
+      </div>
+    </section>
+
+    <!-- 话术库 -->
+    <section class="page" id="page-pool">
+      <h2>话术库（QQ 和抖音共用）</h2>
+      <p class="hint">每天每位好友从下面的池子里<b>随机抽 1 条</b>发出，两边共用这一套。全在本地完成，不调用任何 AI 接口。抖音的好友名单在「抖音」页管理。</p>
+      <div class="panel">
+        <div class="panel-title">文字话术</div>
+        <div id="pool-texts"></div>
+        <div class="btn-row">
+          <button class="btn small" id="pool-add-text">＋ 添加一条</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">表情（星星布丁原创 · 两边通用）</div>
+        <div class="sticker-grid" id="pool-stickers"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" id="pool-save">💾 保存话术库</button>
+        <span class="hint" id="pool-note"></span>
+      </div>
+    </section>
+
+    <!-- 定时 -->
+    <section class="page" id="page-schedule">
+      <h2>每日定时</h2>
+      <div class="panel">
+        <div class="panel-title">抖音侧定时任务</div>
+        <div class="status-line" id="sched-status"></div>
+        <div class="form-row"><label>每天</label>
+          <input type="time" id="sched-time" value="08:30">
+          <span>自动续抖音火花</span></div>
+        <div class="btn-row">
+          <button class="btn primary" id="sched-register">💾 注册/更新定时</button>
+          <button class="btn danger" id="sched-remove">🗑 删除定时</button>
+        </div>
+        <p class="hint">到点时电脑需开着、没睡眠、联网。睡眠/关机不会补发。QQ 侧不用这里定时：QQ 页里保持运行的程序自己按配置时间发送。</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">QQ 侧发送时间</div>
+        <div class="form-row"><label>每天</label>
+          <input type="time" step="1" id="sched-qq-time" value="10:00:00">
+          <span>自动续 QQ 火花</span></div>
+        <div class="btn-row">
+          <button class="btn primary" id="sched-qq-save">💾 保存 QQ 时间</button>
+          <span class="hint" id="sched-qq-note" style="margin:0"></span>
+        </div>
+        <p class="hint">改完即保存；若 QQ 正在运行，需回「QQ」页停止再启动一次才生效（不用扫码）。</p>
+      </div>
+    </section>
+    <section class="page" id="page-logs">
+      <h2>运行日志</h2>
+      <div class="btn-row">
+        <button class="btn small" id="log-refresh">🔄 刷新</button>
+        <button class="btn small" id="log-open">📂 打开日志文件夹</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">软件日志（今天，含每日定时任务的输出）</div>
+        <pre class="logbox" id="log-app"></pre>
+      </div>
+      <div class="panel">
+        <div class="panel-title">抖音发送日志（最近 80 行）</div>
+        <pre class="logbox" id="log-douyin"></pre>
+        <p class="hint">🔴 出问题先看这里红色的行。如需求助：点「打开日志文件夹」，把日期最新的文件发给帮你装软件的人。</p>
+      </div>
+    </section>
+
+    <!-- 关于 -->
+    <section class="page" id="page-about">
+      <h2>关于</h2>
+      <div class="panel">
+        <div class="panel-title">版本与更新</div>
+        <div class="status-line" id="about-version"></div>
+        <div class="btn-row">
+          <button class="btn" id="about-check">🔍 检查更新</button>
+          <button class="btn primary" id="about-apply">⬇ 一键更新</button>
+        </div>
+        <p class="hint">💡 国内网络建议先开代理再更新，会快很多。更新失败不影响现有使用，下次重试即可。你的个人配置不会被更新覆盖。</p>
+        <div id="about-update-result" class="status-line"></div>
+        <pre class="changelog" id="about-changelog"></pre>
+      </div>
+      <div class="panel">
+        <div class="panel-title">捞鱼工作室</div>
+        <div class="about-author">
+          <img src="assets/第9弹-萌萌.png" class="author-sticker" alt="捞鱼">
+          <div>
+            <p>🐟 捞鱼 —— 一个弱小但有梦想的开发者</p>
+            <p class="hint">个人主页 · lyzbcy.github.io</p>
+          </div>
+        </div>
+        <div class="qr-row">
+          <div class="qr"><img src="https://lyzbcy.github.io/weshoto-study/img/sticker/sticker-qr.png"><span>表情包</span></div>
+          <div class="qr"><img src="https://lyzbcy.github.io/weshoto-study/img/qq-group.jpg"><span>加QQ群</span></div>
+          <div class="qr"><img src="https://lyzbcy.github.io/weshoto-study/img/reward-qr.jpg"><span>请喝咖啡</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">安全提示</div>
+        <p class="hint">登录凭证（storage-state.json / .env / QQ 登录态）等于账号密码，请勿外传。自动化请保持低频（每天 1 次、少量好友），以防平台风控。本项目仅供个人学习研究，禁止商用。</p>
+      </div>
+    </section>
+  </main>
+
+  <!-- 底部状态栏 -->
+  <footer class="statusbar">
+    <span class="dot"></span>
+    <span id="statusbar-text">就绪</span>
+    <span class="spacer"></span>
+    <span id="statusbar-time"></span>
+  </footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

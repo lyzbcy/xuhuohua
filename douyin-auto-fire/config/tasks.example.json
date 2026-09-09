@@ -1,0 +1,44 @@
+{
+  "timezone": "Asia/Shanghai",
+  "task_id": "daily-streak",
+  "targets": [
+    {
+      "name": "测试好友A",
+      "messages": [
+        {
+          "type": "text",
+          "content": "今天也要开心"
+        },
+        {
+          "type": "douyin_sticker",
+          "sticker": "比心"
+        }
+      ]
+    },
+    {
+      "name": "测试好友B",
+      "messages": [
+        {
+          "type": "random",
+          "choices": [
+            {
+              "type": "text",
+              "content": "早上好"
+            },
+            {
+              "type": "douyin_sticker",
+              "sticker": "开心"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "send_interval_seconds": {
+    "min": 3,
+    "max": 8
+  },
+  "continue_on_error": true,
+  "target_open_retries": 1,
+  "target_open_timeout_seconds": 15
+}

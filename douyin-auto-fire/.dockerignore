@@ -1,0 +1,15 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.env
+.env.account*
+config.json
+config/accounts.json
+config/tasks/
+storage-state.json
+storage_state/
+artifacts/
+*.log

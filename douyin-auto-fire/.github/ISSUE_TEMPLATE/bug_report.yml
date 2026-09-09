@@ -1,0 +1,65 @@
+name: Bug Report
+
+description: 报告可复现的问题或异常行为
+title: "[Bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题。请不要在这里提交 Cookie、Storage State、Token、Webhook、账号密码等敏感信息。
+
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: 部署方式
+      options:
+        - GitHub Actions
+        - Linux / 云服务器
+        - Windows
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 请说明发生了什么，以及你原本期望发生什么。
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请尽量写出稳定复现问题的步骤。
+      placeholder: |
+        1. 配置 ...
+        2. 运行 ...
+        3. 出现 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: env
+    attributes:
+      label: 运行环境
+      description: Python、系统、浏览器/Playwright、分支或提交版本等。
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志或截图
+      description: 请先脱敏，再粘贴日志或上传截图。
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 提交前检查
+      options:
+        - label: 我已搜索现有 Issue，确认没有重复问题。
+          required: true
+        - label: 我已确认内容中不包含任何真实凭证或敏感信息。
+          required: true

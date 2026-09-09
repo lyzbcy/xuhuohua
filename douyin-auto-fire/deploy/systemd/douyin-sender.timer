@@ -1,0 +1,10 @@
+[Unit]
+Description=Run Douyin Auto Sender Daily
+
+[Timer]
+OnCalendar=*-*-* 08:00:00
+Persistent=true
+RandomizedDelaySec=0
+
+[Install]
+WantedBy=timers.target

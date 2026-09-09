@@ -1,0 +1,14 @@
+{
+  "friends": ["好友A", "好友B"],
+  "messages": [
+    {"type": "text", "value": "今天也要开心呀 😊"},
+    {"type": "sticker", "value": "比心"}
+  ],
+  "stickers": {
+    "比心": {"label": "比心", "category": "常用", "fallback_index": 3}
+  },
+  "send_interval_seconds": {"min": 3, "max": 8},
+  "prevent_duplicates": false,
+  "target_open_retries": 1,
+  "target_open_timeout_seconds": 15
+}

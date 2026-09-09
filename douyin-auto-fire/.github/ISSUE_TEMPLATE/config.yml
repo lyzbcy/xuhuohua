@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用说明与文档
+    url: https://github.com/unmev/douyin-auto-fire#readme
+    about: 提问前请先阅读 README 和对应部署文档。
+  - name: 安全问题报告
+    url: https://github.com/unmev/douyin-auto-fire/security
+    about: 涉及凭证泄露或安全漏洞时，请不要创建公开 Issue。

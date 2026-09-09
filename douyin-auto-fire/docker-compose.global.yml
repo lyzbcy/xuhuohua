@@ -1,0 +1,23 @@
+services:
+  douyin-auto-fire:
+    image: ghcr.io/unmev/douyin-auto-fire:latest
+    container_name: douyin-auto-fire
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      CRON_SCHEDULE: ${CRON_SCHEDULE:-30 0 * * *}
+      RUN_ON_START: ${RUN_ON_START:-false}
+      HEADLESS: ${HEADLESS:-true}
+      DOUYIN_COOKIE: ${DOUYIN_COOKIE:-/data/cookie.json}
+      TASK_CONFIG: ${TASK_CONFIG:-/app/config.json}
+      ARTIFACTS_DIR: ${ARTIFACTS_DIR:-/app/artifacts}
+      DINGTALK_WEBHOOK: ${DINGTALK_WEBHOOK:-}
+      DINGTALK_SECRET: ${DINGTALK_SECRET:-}
+      WEBHOOK_URL: ${WEBHOOK_URL:-}
+      WEBHOOK_HEADERS: ${WEBHOOK_HEADERS:-}
+      WEBHOOK_TEMPLATE: ${WEBHOOK_TEMPLATE:-}
+    volumes:
+      - ./config.json:/app/config.json:ro
+      - ./cookie.json:/data/cookie.json:ro
+      - ./config:/app/config:ro
+      - ./artifacts:/app/artifacts

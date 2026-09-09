@@ -1,0 +1,42 @@
+# 依赖
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# 构建产物
+dist/
+/out-tsc
+/tmp
+dist.zip
+
+# WebUI 子项目构建产物和依赖
+src/webui/dist/
+src/webui/node_modules/
+
+# 日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# PnP
+/.pnp
+.pnp.js
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 环境
+.env
+.env.local
+*.local
