@@ -22,7 +22,8 @@ node_modules/
 __pycache__/
 *.pyc
 .pytest_cache/
-dist/build/
+software/dist/
+software/build/
 
 # ===== 上游示例与构建产物保留 =====
 !napcat-plugin-auto-tasks/dist/

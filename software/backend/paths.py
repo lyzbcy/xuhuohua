@@ -1,8 +1,22 @@
 # -*- coding: utf-8 -*-
-"""路径常量：一切路径从本文件位置推导，软件整体可任意搬迁。"""
+"""路径常量：一切路径从本文件位置推导，软件整体可任意搬迁。
+PyInstaller 打包（frozen）时：
+  - exe 放在项目根目录（和 douyin-auto-fire/ 等文件夹平级）
+  - UI 等只读资源从解包目录 sys._MEIPASS 取
+"""
+import sys
 from pathlib import Path
 
-SOFTWARE_DIR = Path(__file__).resolve().parents[1]   # software/
+FROZEN = getattr(sys, "frozen", False)
+
+if FROZEN:
+    SOFTWARE_DIR = Path(sys.executable).resolve().parent      # exe 所在目录（项目根）
+    UI_DIR = Path(getattr(sys, "_MEIPASS", SOFTWARE_DIR)) / "ui"
+else:
+    SOFTWARE_DIR = Path(__file__).resolve().parents[1]        # software/
+    UI_DIR = SOFTWARE_DIR / "ui"
+
+PROJECT_ROOT = SOFTWARE_DIR                                   # 续火花/
 PROJECT_ROOT = SOFTWARE_DIR.parent                    # 续火花/
 DOUYIN_DIR = PROJECT_ROOT / "douyin-auto-fire"
 DOUYIN_VENV_PY = DOUYIN_DIR / ".venv" / "Scripts" / "python.exe"
@@ -28,7 +42,6 @@ PLUGIN_REGISTRY = PROJECT_ROOT / "napcat-plugin-auto-tasks" / "package.json"
 LOG_DIR = PROJECT_ROOT / "logs"
 VERSION_FILE = PROJECT_ROOT / "VERSION"
 CHANGELOG_FILE = PROJECT_ROOT / "CHANGELOG.md"
-UI_DIR = SOFTWARE_DIR / "ui"
 UI_STICKER_DIR = UI_DIR / "assets" / "stickers"
 
 # 出厂配置里的占位好友名前缀：出现即为"还没配置真实好友"

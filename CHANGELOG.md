@@ -119,3 +119,10 @@
 - 所有发出的话术统一追加固定结尾「——来自捞鱼自动续火花」：抖音=随机话术+独立签名行（两条消息，图文一致）；QQ=单条消息内嵌签名（文字拼尾、图片 CQ 码后跟签名）
 - 话术库页面注明签名自动携带，无需手动添加
 - 项目收录进捞鱼妙妙工具主页（help.wshoto 软件合集区，渐变占位封面 + GitHub/Release 双入口）
+
+## 0.8.0 - 2026-09-09
+
+**双平台分发 + 官网**
+- 新增 GitHub Actions：打 tag 自动构建 Windows exe 与 macOS app 并挂到 Release（macOS 由 CI 的 macOS runner 产出）
+- 官网/介绍页上线：https://lyzbcy.github.io/xuhuohua/（下载入口、功能介绍、捞鱼工作室、强制刷新组件）
+- 打包适配：frozen 模式路径推导（exe 放项目根即可定位全部资源）

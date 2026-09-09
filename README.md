@@ -24,6 +24,13 @@
 | 日志 | 软件日志 + 抖音引擎日志聚合查看 |
 | 关于 | 版本/更新日志、检查更新、一键更新、捞鱼工作室 |
 
+## ⬇️ 下载
+
+- **介绍页 / 下载入口**：https://lyzbcy.github.io/xuhuohua/
+- **Releases**：https://github.com/lyzbcy/xuhuohua/releases/latest
+  - `xuhuohua-windows-x64.zip`（Windows，解压双击 xuhuohua.exe，放在项目根目录使用）
+  - `xuhuohua-macos.zip`（macOS，右键 App → 打开 以绕过未签名提示）
+
 ## 从源码运行（新机器）
 
 1. 克隆本仓库，双击 `启动续火花控制台.bat`（首次会提示缺环境，先做第 2 步）

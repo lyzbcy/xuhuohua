@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="description" content="自动续火花 · QQ 和抖音每天自动续火花的桌面控制台。0 token 本地话术，扫码即用。">
+<title>自动续火花 · QQ/抖音 每天自动续火花</title>
+<style>
+:root{--bg:#17181d;--card:#22242b;--ink:#e8eaf2;--sub:#9aa0b4;--fire:#ff4d6d;--fire2:#ff9a3d;--ok:#3ecf8e;--radius:14px;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"PingFang SC","Microsoft YaHei UI","Microsoft YaHei",sans-serif;background:radial-gradient(1200px 500px at 50% -10%,#3a1a24 0%,var(--bg) 60%);color:var(--ink);min-height:100vh}
+.wrap{max-width:960px;margin:0 auto;padding:36px 20px 60px}
+header{text-align:center;padding:26px 0 10px}
+.logo{font-size:64px;line-height:1;filter:drop-shadow(0 4px 18px rgba(255,77,109,.45))}
+h1{font-size:34px;margin:12px 0 8px;letter-spacing:1px}
+h1 .hot{background:linear-gradient(90deg,var(--fire),var(--fire2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--sub);font-size:15.5px;line-height:1.8}
+.badges{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.badge{font-size:12px;color:var(--sub);border:1px solid #33363f;background:#1d1f26;border-radius:999px;padding:5px 13px}
+.badge b{color:var(--ink)}
+.dl{display:flex;gap:14px;justify-content:center;margin:26px 0 8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:14px 26px;border-radius:12px;font-size:16px;font-weight:700;text-decoration:none;transition:.15s;border:1px solid transparent}
+.btn:hover{transform:translateY(-2px)}
+.btn.win{background:linear-gradient(135deg,var(--fire),#e0445f);color:#fff}
+.btn.mac{background:#1d1f26;color:var(--ink);border-color:#3a3d47}
+.btn small{font-weight:400;opacity:.75;font-size:11.5px}
+.dl-note{text-align:center;color:var(--sub);font-size:12.5px}
+.dl-note a{color:var(--fire2)}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;margin-top:34px}
+.f{background:var(--card);border-radius:var(--radius);padding:20px 22px;border:1px solid #2c2f38}
+.f .ic{font-size:26px}
+.f h3{font-size:15.5px;margin:8px 0 6px}
+.f p{font-size:13px;color:var(--sub);line-height:1.8}
+.steps{background:var(--card);border-radius:var(--radius);padding:22px 24px;margin-top:14px;border:1px solid #2c2f38}
+.steps h3{font-size:15.5px;margin-bottom:10px}
+.steps ol{margin-left:20px;color:var(--sub);font-size:13.5px;line-height:2.1}
+.steps b{color:var(--ink)}
+.about{display:flex;gap:18px;align-items:center;background:var(--card);border-radius:var(--radius);padding:20px 24px;margin-top:14px;border:1px solid #2c2f38;flex-wrap:wrap}
+.about img.st{width:64px;height:64px;border-radius:12px}
+.about p{font-size:13.5px;line-height:1.9;color:var(--sub)}
+.about p b{color:var(--ink)}
+.qrs{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}
+.qr{text-align:center}
+.qr img{width:88px;height:88px;border-radius:10px;border:1px solid #3a3d47;object-fit:cover;background:#fff;padding:3px}
+.qr span{display:block;font-size:11px;color:var(--sub);margin-top:5px}
+footer{text-align:center;color:#6b7080;font-size:12px;margin-top:36px;line-height:2}
+footer a{color:#9aa0b4}
+.fr-btn{position:fixed;top:16px;right:16px;background:#1d1f26;border:1px solid #3a3d47;color:var(--ink);border-radius:999px;padding:8px 16px;font-size:12.5px;cursor:pointer}
+.fr-panel{position:fixed;top:56px;right:16px;width:300px;max-height:320px;overflow-y:auto;background:#1d1f26;border:1px solid #3a3d47;border-radius:12px;padding:14px;display:none;z-index:9}
+.fr-panel.open{display:block}
+.fr-panel h4{font-size:13px;margin-bottom:8px}
+.fr-panel li{font-size:12px;color:var(--sub);line-height:1.7;margin-bottom:8px;list-style:none}
+.fr-panel .d{color:#6b7080;font-size:11px}
+</style>
+</head>
+<body>
+<button class="fr-btn" id="frBtn" title="最近更新">🕐 <span id="frDate">—</span> 更新 · 🔄 一键刷新</button>
+<div class="fr-panel" id="frPanel">
+  <h4>🕐 更新日志</h4>
+  <ul id="frList"><li class="d">加载中…</li></ul>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="logo">🔥</div>
+    <h1>自动<span class="hot">续火花</span></h1>
+    <p class="sub">QQ 和抖音的好友火花，再也不用手动续了。<br>一体化桌面控制台：扫码登录 → 勾选好友 → 每天自动发。</p>
+    <div class="badges">
+      <span class="badge">💬 <b>0 token</b> 本地话术</span>
+      <span class="badge">🐧 QQ + 🎵 抖音</span>
+      <span class="badge">🪟 Windows · 🍎 macOS</span>
+      <span class="badge">🔒 凭证仅存本机</span>
+    </div>
+  </header>
+
+  <div class="dl">
+    <a class="btn win" href="https://github.com/lyzbcy/xuhuohua/releases/latest" target="_blank" rel="noopener">🪟 Windows 下载 <small>zip · x64</small></a>
+    <a class="btn mac" href="https://github.com/lyzbcy/xuhuohua/releases/latest" target="_blank" rel="noopener">🍎 macOS 下载 <small>zip · app</small></a>
+  </div>
+  <p class="dl-note">两个按钮都指向 <a href="https://github.com/lyzbcy/xuhuohua/releases" target="_blank" rel="noopener">Releases</a> 最新版本 · macOS 首次打开：右键 App → 打开（未签名提示一次即可）</p>
+
+  <div class="features">
+    <div class="f"><div class="ic">💬</div><h3>0 token 话术库</h3><p>所有消息来自本地话术库随机抽取：文字 + 原创表情包。不调用任何 AI 接口，不花一分钱，每条结尾自动带上签名。</p></div>
+    <div class="f"><div class="ic">🐧🎵</div><h3>QQ / 抖音 双平台</h3><p>一个软件管两边。抖音走网页自动化，QQ 走 NapCat 引擎，各自独立定时，互不干扰。</p></div>
+    <div class="f"><div class="ic">📥</div><h3>好友免手打</h3><p>直接拉取最近会话 / QQ 好友列表，勾选即添加，搜索过滤、同名去重。</p></div>
+    <div class="f"><div class="ic">⏰</div><h3>统一定时</h3><p>抖音 + QQ 发送时间集中设置，每天到点自动发；QQ 话术凌晨自动换一条新的。</p></div>
+    <div class="f"><div class="ic">🔥</div><h3>立即续一把</h3><p>等不及定时？仪表盘点一下，两个平台立刻随机发一条，结果逐好友反馈。</p></div>
+    <div class="f"><div class="ic">🛡️</div><h3>稳与安全</h3><p>防重复发送、IM 弹窗自动清理、失败好友名日志还原、补发一键搞定；登录凭证只存本机。</p></div>
+  </div>
+
+  <div class="steps">
+    <h3>🚀 三步上手</h3>
+    <ol>
+      <li>下载解压，双击 <b>xuhuohua.exe</b>（macOS 打开 <b>xuhuohua.app</b>）</li>
+      <li>「抖音」页扫码登录（自动保存）；「QQ」页点启动并扫码（登录过一次后自动快登）</li>
+      <li>勾选好友、设置时间 → 完事，每天自动续</li>
+    </ol>
+  </div>
+
+  <div class="about">
+    <img class="st" src="https://lyzbcy.github.io/weshoto-study/img/sticker/mascot.png" alt="捞鱼">
+    <div style="flex:1;min-width:240px">
+      <p><b>🐟 捞鱼</b> —— 一个弱小但有梦想的开发者（捞鱼工作室）</p>
+      <p>喜欢就给仓库点个 <b>Star</b> 吧，这对独立开发者真的很重要 🌟
+         <a href="https://github.com/lyzbcy/xuhuohua" target="_blank" rel="noopener" style="color:var(--fire2)">github.com/lyzbcy/xuhuohua</a></p>
+      <div class="qrs">
+        <div class="qr"><img src="https://lyzbcy.github.io/weshoto-study/img/sticker/sticker-qr.png" alt="表情包"><span>微信表情包</span></div>
+        <div class="qr"><img src="https://lyzbcy.github.io/weshoto-study/img/qq-group.jpg" alt="QQ群"><span>加群交流</span></div>
+        <div class="qr"><img src="https://lyzbcy.github.io/weshoto-study/img/reward-qr.jpg" alt="请喝咖啡"><span>请作者喝咖啡</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    更多工具： <a href="https://help.wshoto.com/resource/5ea68b60e5b24df78ddce46cf1614671/27da304c.html" target="_blank" rel="noopener">捞鱼妙妙工具（奶油色主页）</a>
+    · <a href="https://lyzbcy.github.io/laoyu-miaomiao-tools/" target="_blank" rel="noopener">暗色 Skill 收录站</a><br>
+    由 <a href="https://lyzbcy.github.io/" target="_blank" rel="noopener">捞鱼</a> 制作 · 捞鱼工作室 · 仅供个人学习研究，请低频使用防风控
+  </footer>
+</div>
+
+<script>
+window.__FR__ = {
+  version: '2026.09.09-1',
+  registry: 'version.json',
+  pageId: 'xuhuohua',
+  changelog: [
+    '2026-09-09 首页上线：Windows / macOS 双平台下载，v0.7.0 起话术自动带「——来自捞鱼自动续火花」签名',
+    '2026-09-09 v0.6.x：好友列表勾选、统一定时、补发按钮、弹窗免疫、QQ 快速登录'
+  ]
+};
+(function(){
+  var CFG = window.__FR__;
+  function $(id){ return document.getElementById(id); }
+  function renderLog(entries, updated){
+    if (updated) $('frDate').textContent = updated.slice(5);
+    var ul = $('frList'); ul.innerHTML = '';
+    (entries || []).slice(0, 6).forEach(function(t){
+      var li = document.createElement('li'); li.textContent = t; ul.appendChild(li);
+    });
+  }
+  renderLog(CFG.changelog, CFG.version.replace(/^(\d{4}\.\d{2}\.\d{2}).*/, '$1'));
+  fetch(CFG.registry + '?t=' + Date.now()).then(r => r.json()).then(function(reg){
+    var page = (reg.pages || {})[CFG.pageId];
+    if (page) { renderLog(page.changes || CFG.changelog, page.updated); }
+    if (page && page.version !== CFG.version) { location.replace(location.pathname + '?v=' + page.version); }
+  }).catch(function(){});
+  $('frBtn').onclick = function(){ $('frPanel').classList.toggle('open'); };
+  sessionStorage.removeItem('__fr_done__');
+  var key = '__fr_' + CFG.version;
+  if (!sessionStorage.getItem(key)) {
+    sessionStorage.setItem(key, '1');
+    setTimeout(function(){ location.reload(); }, 400);
+  }
+})();
+</script>
+</body>
+</html>
