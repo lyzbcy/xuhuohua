@@ -14,6 +14,9 @@ from backend.paths import DOUYIN_CONFIG, DOUYIN_STICKERS, PROJECT_ROOT
 POOL_FILE = PROJECT_ROOT / "config" / "message_pool.json"
 _lock = threading.Lock()
 
+# 固定结尾：每条发出的话术都会带上（用户规范）
+SIGNATURE = "——来自捞鱼自动续火花"
+
 
 def _default_pool() -> dict:
     return {"texts": [], "stickers": []}   # stickers 存文件名（stickers-lb/xx.png）
@@ -69,21 +72,30 @@ def save_pool(texts: list, stickers: list, log: bool = True) -> dict:
 
 
 def pick_random() -> dict:
-    """随机抽一条：{"type":"text","content":...} 或 {"type":"image","abs_path":...}。"""
+    """随机抽一条：{"type":"text","content":...} 或 {"type":"image","abs_path":...}。
+    文本自动带固定结尾；图片返回独立结尾标记，由调用方决定追加方式。"""
     pool = get_pool()
     bag = ([{"type": "text", "content": t} for t in pool["texts"]]
            + [{"type": "image", "file": s} for s in pool["stickers"]])
     if not bag:
-        return {"type": "text", "content": "续火花啦 🔥"}
+        return {"type": "text", "content": "续火花啦 🔥\n" + SIGNATURE}
     item = random.choice(bag)
-    if item["type"] == "image":
+    if item["type"] == "text":
+        item["content"] = item["content"] + "\n" + SIGNATURE
+    else:
         item["abs_path"] = str(DOUYIN_STICKERS / item["file"])
     return item
 
 
 def douyin_choices() -> list:
-    """生成抖音 config.json 用的 choices 数组（相对路径）。"""
+    """生成抖音 config.json 用的 choices 数组（相对路径，保持原文）。
+    签名不内嵌：由 save_friends 统一追加为独立的第二条消息（图文一致）。"""
     pool = get_pool()
     choices = [{"type": "text", "content": t} for t in pool["texts"]]
     choices += [{"type": "image", "path": "stickers-lb/" + s} for s in pool["stickers"]]
     return choices
+
+
+def douyin_signature_message() -> dict:
+    """抖音侧的签名消息（作为图片消息后的独立一条）。"""
+    return {"type": "text", "content": SIGNATURE}

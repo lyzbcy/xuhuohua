@@ -382,14 +382,14 @@ def qq_send_now() -> dict:
     raw_targets = (cfg.get("friendSpark_targets") or "").strip()
     if not raw_targets:
         return {"ok": False, "msg": "还没填对方 QQ 号：请在上方「对方 QQ 号」里填好并保存"}
-    # 话术从共享话术池随机抽（QQ 与抖音共用）
+    # 话术从共享话术池随机抽（QQ 与抖音共用），统一带固定结尾签名
     from backend import pool as pool_mod
     item = pool_mod.pick_random()
     if item["type"] == "text":
-        message = item["content"]
+        message = item["content"]            # pick_random 已内嵌签名
     else:
-        message = "[CQ:image,file=file:///" + item["abs_path"].replace("\\", "/") + "]"
-    logger.info("[QQ] 本次抽取话术: {0}".format("图片表情" if item["type"] == "image" else message), source="qq")
+        message = "[CQ:image,file=file:///" + item["abs_path"].replace("\\", "/") + "] " + pool_mod.SIGNATURE
+    logger.info("[QQ] 本次抽取话术: {0}".format("图片表情+签名" if item["type"] == "image" else "文字+签名"), source="qq")
     port, token = http_cfg["port"], http_cfg["token"]
     results = []
     for uid in [t.strip() for t in raw_targets.split(",") if t.strip()]:

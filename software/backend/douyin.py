@@ -50,7 +50,10 @@ def save_friends(names: list[str]) -> dict:
     if not choices:
         return {"ok": False, "msg": "话术库是空的：请先到「话术库」页添加文字或表情"}
     cfg = get_config() or _default_config()
-    cfg["targets"] = [{"name": n, "messages": [{"type": "random", "choices": choices}]}
+    # 每位好友的消息序列：随机抽 1 条 + 固定签名结尾（用户规范）
+    cfg["targets"] = [{"name": n,
+                       "messages": [{"type": "random", "choices": choices},
+                                    pool_mod.douyin_signature_message()]}
                       for n in names]
     try:
         save_config(cfg)
