@@ -39,7 +39,6 @@ jobs:
         shell: pwsh
         run: |
           python scripts/make_portable_zip.py
-          Copy-Item xuhuohua-windows-x64.zip . -Force
       - uses: actions/upload-artifact@v4
         with:
           name: windows
