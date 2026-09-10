@@ -156,3 +156,13 @@
 - login_gui.py / fetch_friends.py 未随 PyInstaller 打包 → frozen 模式路径落空。现以 --add-data 入包并统一从资源目录解析
 - 连带发现并修复更深的坑：嵌入式 Python 的 _pth 隔离模式无视 PYTHONPATH——引擎子进程找不到依赖。修复：deps 路径写入 python312._pth（安装脚本写入 + 软件启动自愈，老安装也能被自动修好）
 - 实测：runtime 解释器下 fetch_friends 拉取真实会话列表成功
+
+## 0.10.0 - 2026-09-10
+
+**架构重做：单 exe 自修复（用户要求："缺东西就自动下载，bat 不应该存在"）**
+- 「⚡ 一键初始化」完全内置 exe：自动下载嵌入式 Python → 引擎依赖 → 浏览器组件 → NapCat，全程不弹窗、进度实时显示在软件里；支持命令行 xuhuohua.exe --setup
+- ①一键安装引擎.bat 退役，不再随包；NapCat 不再随包（zip 从 44.7MB 瘦身到 ~18MB），由 exe 自动下载
+- 续火花插件打进 exe 资源（frozen 模式 QQ 插件部署隐患一并修复）
+- 修复：ghproxy.cn 返回 HTML 门槛页冒充 zip——下载加 zip 魔数/大小校验，镜像换 gh-proxy.com/ghproxy.net
+- 修复：CI 会用精简包覆盖正式 Windows 资产——CI release 只挂 macOS，Windows 由本地构建上传
+- 实测：三组件全缺的全新目录跑 --setup，五步自动装齐后正常启动

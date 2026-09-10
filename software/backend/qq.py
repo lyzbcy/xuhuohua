@@ -17,10 +17,11 @@ import urllib.request
 from pathlib import Path
 
 from backend import logger
-from backend.paths import (NAPCAT_CONFIG_DIR, NAPCAT_DIR, NAPCAT_LAUNCHER,
-                           NAPCAT_LAUNCHER_WIN10, PLUGIN_CONFIG_PATH,
-                           PLUGIN_DIR, PLUGIN_DIST, PLUGIN_ENABLE_FILE,
-                           PLUGIN_ID, LEGACY_PLUGIN_CONFIG, PLUGIN_REGISTRY)
+from backend.paths import (BUNDLE_DIR, NAPCAT_CONFIG_DIR, NAPCAT_DIR,
+                           NAPCAT_LAUNCHER, NAPCAT_LAUNCHER_WIN10,
+                           PLUGIN_CONFIG_PATH, PLUGIN_DIR, PLUGIN_DIST,
+                           PLUGIN_ENABLE_FILE, PLUGIN_ID,
+                           LEGACY_PLUGIN_CONFIG, PLUGIN_REGISTRY)
 from backend.winproc import CREATE_NO_WINDOW, run_cmd
 
 DEFAULT_PLUGIN_CONFIG = {
@@ -103,13 +104,15 @@ def _ensure_plugin_enabled() -> None:
 
 
 def ensure_plugin_deployed() -> bool:
-    """部署插件产物 + 启用项 + 旧配置迁移。"""
-    if not PLUGIN_DIST.joinpath("index.mjs").exists():
-        logger.fail("[QQ] 插件产物缺失（napcat-plugin-auto-tasks/dist）", source="qq")
+    """部署插件产物 + 启用项 + 旧配置迁移。
+    插件来源：源码模式用 napcat-plugin-auto-tasks/dist；打包模式从 exe 内置资源释放。"""
+    src_dir = PLUGIN_DIST if PLUGIN_DIST.joinpath("index.mjs").exists()         else BUNDLE_DIR / "backend" / "assets" / "auto-tasks"
+    if not src_dir.joinpath("index.mjs").exists():
+        logger.fail("[QQ] 插件产物缺失（安装包不完整）", source="qq")
         return False
     PLUGIN_DIR.mkdir(parents=True, exist_ok=True)
     for name in ("index.mjs", "package.json"):
-        src, dst = PLUGIN_DIST / name, PLUGIN_DIR / name
+        src, dst = src_dir / name, PLUGIN_DIR / name
         if not dst.exists() or src.read_bytes() != dst.read_bytes():
             dst.write_bytes(src.read_bytes())
             logger.info("[QQ] 已部署插件文件 " + name, source="qq")

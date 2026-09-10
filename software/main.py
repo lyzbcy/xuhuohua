@@ -42,7 +42,7 @@ _remove_mark_of_the_web()
 
 import webview  # noqa: E402
 
-from backend import douyin, logger, pool, qq, scheduler, updater  # noqa: E402
+from backend import douyin, logger, pool, qq, scheduler, setup_env, updater  # noqa: E402
 from backend.paths import (DOUYIN_RUNLOG, DOUYIN_STICKERS, FETCH_FRIENDS_SCRIPT,  # noqa: E402
                            LOG_DIR, NAPCAT_DIR, PROJECT_ROOT, UI_DIR,
                            UI_STICKER_DIR)
@@ -113,7 +113,10 @@ class Api:
         return douyin.start_login()
 
     def douyin_setup_env(self):
-        return douyin.setup_env()
+        return setup_env.start_async()
+
+    def setup_env_status(self):
+        return setup_env.status()
 
     def douyin_run(self, dry_run=False):
         return douyin.run(bool(dry_run))
@@ -229,6 +232,11 @@ def _startup_housekeeping():
 
 
 def main():
+    # 命令行自修复模式：xuhuohua.exe --setup（缺件时直接同步装完）
+    if "--setup" in sys.argv:
+        logger.info("[初始化] 命令行模式启动（xuhuohua.exe --setup）", source="setup")
+        setup_env.run_install()
+        return
     # ---- 单实例锁：绑定本地端口；重复启动快速弹窗退出（避免狂点出多窗口）----
     # 放在 main() 而非模块层：API 直调/测试不会触发弹窗阻塞
     try:

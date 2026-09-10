@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('ui', 'ui'), ('backend/login_gui.py', 'backend'), ('backend/fetch_friends.py', 'backend')]
+datas = [('ui', 'ui'), ('backend/login_gui.py', 'backend'), ('backend/fetch_friends.py', 'backend'), ('../napcat-plugin-auto-tasks/dist', 'backend/assets/auto-tasks')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('webview')

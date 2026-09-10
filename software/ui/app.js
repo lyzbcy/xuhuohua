@@ -193,12 +193,31 @@ $("#dash-qq-send").addEventListener("click", () => qqSendNow());
 $("#dy-setup-env").addEventListener("click", (e) => withBtn(e.target, async () => {
   try {
     const r = await call("douyin_setup_env");
-    $("#dy-env-note").textContent = r.started ? "安装中…请到弹出的窗口等进度跑完" : r.msg;
-    if (!r.started && r.msg.includes("已装好")) { envNoteAfterInstall(); }
+    $("#dy-env-note").textContent = r.msg;
     setStatus(r.msg);
-  } catch (err) { alert("启动安装失败：" + err.message); }
+  } catch (err) { alert("启动初始化失败：" + err.message); }
 }));
-function envNoteAfterInstall() { setTimeout(pollState, 4000); }
+// 初始化进度轮询：安装期间显示当前步骤，事件总线有输出就滚动
+setInterval(async () => {
+  if (!apiReady) return;
+  try {
+    const s = await call("setup_env_status");
+    const box = $("#setup-progress");
+    if (s.running) {
+      box.style.display = "";
+      box.innerHTML = '<span class="mid">⏳ ' + esc(s.step || "进行中…") + '</span>';
+    } else if (s.error) {
+      box.style.display = "";
+      box.innerHTML = '<span class="bad">✘ ' + esc(s.error) + '</span>';
+    } else if (box.style.display !== "none") {
+      const missing = (s.missing || []).length;
+      box.innerHTML = missing === 0
+        ? '<span class="ok">✔ 初始化完成！去上面扫码登录，然后点「演练」验证</span>'
+        : '<span class="mid">已就绪（还可补充：' + esc(s.missing.join("、")) + '）</span>';
+      if (missing === 0) { pollState(); }
+    }
+  } catch (e) { }
+}, 2500);
 
 $("#dy-login-btn").addEventListener("click", (e) => withBtn(e.target, async () => {
   try {

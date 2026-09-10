@@ -41,21 +41,13 @@ def main():
 
     # 1) 应用本体（PyInstaller 产物，原样全量）
     n1 = copy_filtered(ROOT / "software" / "dist" / "xuhuohua", PKG)
-    # 2) NapCat QQ 引擎：tools/napcat/shell → 保持原相对结构
-    n2 = copy_filtered(ROOT / "tools" / "napcat" / "shell",
-                       PKG / "tools" / "napcat" / "shell")
-    # 3) 续火花插件预部署（开箱即用）
-    plugin = ROOT / "napcat-plugin-auto-tasks" / "dist"
-    if plugin.exists():
-        pd = PKG / "tools" / "napcat" / "shell" / "plugins" / "auto-tasks"
-        pd.mkdir(parents=True, exist_ok=True)
-        for f in ("index.mjs", "package.json"):
-            shutil.copy2(plugin / f, pd / f)
+    # NapCat 与插件不再随包：exe「一键初始化」自动下载/释放（zip 瘦身 26MB）
+    n2 = 0
     # 4) 抖音引擎源码（不含凭证/venv/产物）
     n3 = copy_filtered(ROOT / "douyin-auto-fire", PKG / "douyin-auto-fire",
                        extra_exclude_files={"storage-state.json", "config.json", ".env"})
-    # 5) 一键安装脚本 / 说明 / 版本
-    shutil.copy2(ROOT / "①一键安装引擎.bat", PKG / "①一键安装引擎.bat")
+    # 5) 说明 / 版本（安装脚本已退役：初始化内置于 exe）
+    n2b = 0
     shutil.copy2(ROOT / "使用说明.txt", PKG / "使用说明.txt")
     shutil.copy2(ROOT / "README.md", PKG / "README.md")
     shutil.copy2(ROOT / "VERSION", PKG / "VERSION")

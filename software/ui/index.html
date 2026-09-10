@@ -72,12 +72,13 @@
     <section class="page" id="page-douyin">
       <h2>抖音续火花</h2>
       <div class="panel" id="dy-env-panel" style="display:none;border:2px solid #e8a013;background:#fffdf3">
-        <div class="panel-title">⚡ 首次使用：先装运行环境（约 5-10 分钟，全自动）</div>
-        <p class="hint">点下面的按钮，会弹出一个黑色窗口自动下载安装（Python、依赖、浏览器组件）。<b>不用你操作任何东西</b>，等它显示「安装完成」后，回来点「演练」验证即可。全程只需这一次。</p>
+        <div class="panel-title">⚡ 首次使用：初始化引擎（全自动下载，约 5-10 分钟）</div>
+        <p class="hint">缺什么会自动下载什么（Python、抖音依赖、浏览器组件、QQ 引擎），全程无需操作、不弹任何窗口，进度实时显示在下面。<b>可以最小化软件去忙别的，装完会有提示。</b></p>
         <div class="btn-row">
-          <button class="btn primary" id="dy-setup-env">⚡ 一键安装引擎（推荐）</button>
+          <button class="btn primary" id="dy-setup-env">⚡ 一键初始化（全自动）</button>
           <span class="hint" id="dy-env-note" style="margin:0"></span>
         </div>
+        <div class="status-line" id="setup-progress" style="display:none"><span class="mid">⏳ 准备中…</span></div>
       </div>
       <div class="panel">
         <div class="panel-title">第 1 步 · 扫码登录（一次性）</div>

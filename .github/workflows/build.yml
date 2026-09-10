@@ -46,7 +46,7 @@ jobs:
           python scripts/make_portable_zip.py
       - uses: actions/upload-artifact@v4
         with:
-          name: windows
+          name: windows-smoke-only
           path: xuhuohua-windows-x64.zip
 
   macos:
@@ -77,7 +77,7 @@ jobs:
           path: xuhuohua-macos.zip
 
   release:
-    needs: [windows, macos]
+    needs: [windows, macos]   # Windows 正式分发包含 NapCat 等二进制，由维护者本机构建后上传；CI 只做 macos
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
@@ -88,5 +88,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            xuhuohua-windows-x64.zip
             xuhuohua-macos.zip
