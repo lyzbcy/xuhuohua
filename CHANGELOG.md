@@ -141,3 +141,11 @@
 - 控制台内置「⚡ 一键安装引擎」按钮：环境未装时抖音页顶部自动出现横幅，点击即启动安装（黑窗显示中文进度）
 - 修复：bat 必须 CRLF 换行（LF 会导致 cmd 解析乱套）；打包器误排除 .zip 后缀导致 base_library.zip 缺失（分发包 exe 启动即崩）；frozen/源码双模式 PROJECT_ROOT 各归其位
 - 完整小白流程实测通过：解压 → 双击安装脚本（四步全绿）→ 双击 exe 正常使用
+
+## 0.9.1 - 2026-09-10
+
+**修复"下载的包打不开"（根因终于闭环）**
+- 现象：浏览器下载 zip → 资源管理器解压 → exe 崩（pythonnet: Failed to resolve Python.Runtime.Loader.Initialize）
+- 根因：Windows 给下载文件打"来自互联网"标记（MOTW/Zone.Identifier），解压时传播到所有文件；.NET Framework 拒绝加载带标记的 Python.Runtime.dll。本地测试用 Python 解压不传播标记，所以从未复现
+- 修复：exe 启动时自动清除全部文件的网络标记（kernel32.DeleteFileW 删 ADS），一次代码永久免疫
+- 验证：给 254 个文件手工打满标记后启动，窗口正常拉起

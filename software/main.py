@@ -10,6 +10,36 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+def _remove_mark_of_the_web():
+    """清除"来自互联网"标记（Zone.Identifier ADS）。
+    浏览器下载的 zip 经资源管理器解压后，所有文件都带 MOTW，
+    .NET Framework 会拒绝加载其中的 Python.Runtime.dll → pywebview 崩溃。
+    exe 启动时自愈：逐文件删除 ADS，永久免疫。"""
+    import ctypes
+    import os as _os
+    from backend.paths import FROZEN, SOFTWARE_DIR
+    if not FROZEN:
+        return
+    k32 = ctypes.windll.kernel32
+    internal = SOFTWARE_DIR / "_internal"
+    targets = [SOFTWARE_DIR / "xuhuohua.exe"]
+    if internal.exists():
+        for root, dirs, files in _os.walk(internal):
+            targets.extend(Path(root) / f for f in files)
+    cleaned = 0
+    for p in targets:
+        try:
+            if k32.DeleteFileW(str(p) + ":Zone.Identifier"):
+                cleaned += 1
+        except Exception:
+            continue
+    if cleaned:
+        import logging
+        print("已清除 {0} 个文件的网络下载标记".format(cleaned))
+
+
+_remove_mark_of_the_web()
+
 import webview  # noqa: E402
 
 from backend import douyin, logger, pool, qq, scheduler, updater  # noqa: E402
