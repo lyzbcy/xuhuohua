@@ -48,6 +48,8 @@ if errorlevel 1 (
   if errorlevel 1 ( echo [X] 依赖安装失败，请检查网络后重新双击本脚本 & pause & exit /b 1 )
 )
 echo [√] 依赖就位
+rem 嵌入式 Python 的 _pth 模式无视 PYTHONPATH，必须把 deps 写进 _pth
+findstr /C:"douyin-auto-fire\deps" runtime\python312._pth >nul 2>&1 || echo ..\douyin-auto-fire\deps>> runtime\python312._pth
 
 echo [4/4] 下载浏览器组件（约 300MB，最大的一步，请耐心等待）...
 set PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright/

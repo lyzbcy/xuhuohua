@@ -149,3 +149,10 @@
 - 根因：Windows 给下载文件打"来自互联网"标记（MOTW/Zone.Identifier），解压时传播到所有文件；.NET Framework 拒绝加载带标记的 Python.Runtime.dll。本地测试用 Python 解压不传播标记，所以从未复现
 - 修复：exe 启动时自动清除全部文件的网络标记（kernel32.DeleteFileW 删 ADS），一次代码永久免疫
 - 验证：给 254 个文件手工打满标记后启动，窗口正常拉起
+
+## 0.9.2 - 2026-09-10
+
+**修复打包版抖音功能不可用（用户报告：缺少 backend/login_gui.py）**
+- login_gui.py / fetch_friends.py 未随 PyInstaller 打包 → frozen 模式路径落空。现以 --add-data 入包并统一从资源目录解析
+- 连带发现并修复更深的坑：嵌入式 Python 的 _pth 隔离模式无视 PYTHONPATH——引擎子进程找不到依赖。修复：deps 路径写入 python312._pth（安装脚本写入 + 软件启动自愈，老安装也能被自动修好）
+- 实测：runtime 解释器下 fetch_friends 拉取真实会话列表成功

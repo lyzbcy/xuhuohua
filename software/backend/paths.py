@@ -11,10 +11,16 @@ FROZEN = getattr(sys, "frozen", False)
 
 if FROZEN:
     SOFTWARE_DIR = Path(sys.executable).resolve().parent      # exe 所在目录（项目根）
-    UI_DIR = Path(getattr(sys, "_MEIPASS", SOFTWARE_DIR)) / "ui"
+    BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", SOFTWARE_DIR)) # 打包资源（_internal）
+    UI_DIR = BUNDLE_DIR / "ui"
 else:
     SOFTWARE_DIR = Path(__file__).resolve().parents[1]        # software/
+    BUNDLE_DIR = SOFTWARE_DIR
     UI_DIR = SOFTWARE_DIR / "ui"
+
+# 引擎辅助脚本（frozen 时从打包资源取，源码时从 backend/ 取）
+LOGIN_GUI_SCRIPT = BUNDLE_DIR / "backend" / "login_gui.py"
+FETCH_FRIENDS_SCRIPT = BUNDLE_DIR / "backend" / "fetch_friends.py"
 
 # frozen：exe 就在项目根；源码：项目根是 software/ 的上一级
 PROJECT_ROOT = SOFTWARE_DIR if FROZEN else SOFTWARE_DIR.parent

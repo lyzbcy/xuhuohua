@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('ui', 'ui')]
+datas = [('ui', 'ui'), ('backend/login_gui.py', 'backend'), ('backend/fetch_friends.py', 'backend')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('webview')

@@ -43,7 +43,7 @@ _remove_mark_of_the_web()
 import webview  # noqa: E402
 
 from backend import douyin, logger, pool, qq, scheduler, updater  # noqa: E402
-from backend.paths import (DOUYIN_RUNLOG, DOUYIN_STICKERS,  # noqa: E402
+from backend.paths import (DOUYIN_RUNLOG, DOUYIN_STICKERS, FETCH_FRIENDS_SCRIPT,  # noqa: E402
                            LOG_DIR, NAPCAT_DIR, PROJECT_ROOT, UI_DIR,
                            UI_STICKER_DIR)
 
@@ -133,9 +133,9 @@ class Api:
             return {"ok": False, "msg": "请先扫码登录抖音"}
         from backend.winproc import run_cmd
         logger.info("[抖音] 正在拉取最近会话列表（约半分钟，请稍等）……", source="douyin")
-        r = run_cmd([str(douyin.DOUYIN_VENV_PY),
-                     str(Path(douyin.__file__).parent / "fetch_friends.py")],
-                    timeout=240, cwd=douyin.DOUYIN_DIR)
+        r = run_cmd([douyin.engine_python(), str(FETCH_FRIENDS_SCRIPT)],
+                    timeout=240, cwd=douyin.DOUYIN_DIR,
+                    env=douyin._engine_env())
         out = (r.stdout or "")
         if "FRIENDS_OK" in out:
             from backend.paths import PROJECT_ROOT

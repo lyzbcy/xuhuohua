@@ -10,6 +10,7 @@ from backend import logger
 from backend.paths import (DOUYIN_BOOTSTRAP, DOUYIN_CONFIG, DOUYIN_DEPS,
                            DOUYIN_DIR, DOUYIN_ENV, DOUYIN_LOCK,
                            DOUYIN_RUNTIME_PY, DOUYIN_STATE, DOUYIN_VENV_PY,
+                           FETCH_FRIENDS_SCRIPT, LOGIN_GUI_SCRIPT,
                            PLACEHOLDER_PREFIX, SOFTWARE_DIR)
 from backend.winproc import CREATE_NO_WINDOW, run_cmd
 
@@ -22,12 +23,31 @@ def _venv_ready() -> bool:
 
 
 def engine_python() -> str:
-    """抖音引擎解释器：开发机用 venv；分发包用嵌入式 runtime（免装 Python）。"""
+    """抖音引擎解释器：开发机用 venv；分发包用嵌入式 runtime（免装 Python）。
+    runtime 是 _pth 隔离模式（无视 PYTHONPATH），确保 deps 路径已写入 _pth。"""
     if DOUYIN_VENV_PY.exists():
         return str(DOUYIN_VENV_PY)
     if DOUYIN_RUNTIME_PY.exists():
+        _ensure_pth_deps()
         return str(DOUYIN_RUNTIME_PY)
     return ""
+
+
+def _ensure_pth_deps() -> None:
+    """把 douyin-auto-fire/deps 追加进 runtime 的 _pth（幂等，缺失才写）。"""
+    pth = DOUYIN_RUNTIME_PY.parent / "python312._pth"
+    if not pth.exists() or not DOUYIN_DEPS.exists():
+        return
+    try:
+        lines = pth.read_text(encoding="utf-8", errors="replace").splitlines()
+        rel = ".." / DOUYIN_DEPS.relative_to(DOUYIN_RUNTIME_PY.parent.parent)
+        rel_win = str(rel).replace("/", chr(92))
+        if any("deps" in ln for ln in lines):
+            return
+        pth.write_text(chr(10).join(lines + [rel_win]) + chr(10), encoding="utf-8")
+        logger.info("[抖音] 已把引擎依赖路径写入 runtime _pth（自动修复）", source="douyin")
+    except OSError:
+        pass
 
 
 def env_ready() -> bool:
@@ -231,10 +251,10 @@ def start_login() -> dict:
     """打开可见浏览器让用户扫码；后台轮询登录 Cookie，成功自动保存凭证。"""
     if not env_ready():
         return {"started": False, "msg": "运行环境还没装：请先点上面的「一键安装引擎」（约 5-10 分钟，只需一次）"}
-    if not SOFTWARE_DIR.joinpath("backend", "login_gui.py").exists():
-        return {"started": False, "msg": "缺少 backend/login_gui.py"}
+    if not LOGIN_GUI_SCRIPT.exists():
+        return {"started": False, "msg": "登录组件缺失（安装包不完整，请重新下载）"}
     logger.info("[抖音] 打开浏览器等待扫码（5 分钟内有效，登录后自动保存）", source="douyin")
-    return _spawn("login", [str(SOFTWARE_DIR / "backend" / "login_gui.py")])
+    return _spawn("login", [str(LOGIN_GUI_SCRIPT)])
 
 
 def run(dry_run: bool = False) -> dict:
