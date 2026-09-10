@@ -35,6 +35,8 @@ software/build/
 /xuhuohua-windows-x64.zip
 /xuhuohua-macos.zip
 
+/pkg/
+
 # ===== 系统杂项 =====
 .DS_Store
 Thumbs.db

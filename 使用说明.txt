@@ -1,0 +1,21 @@
+使用说明（自动续火花 · 控制台）
+================================
+
+【最快上手】
+1. 双击 xuhuohua.exe 打开控制台
+2. 「抖音」页扫码登录（自动保存）；「QQ」页点启动并扫码（一次即可）
+3. 勾选好友、设置时间 → 完事，每天自动续
+
+【抖音引擎首次安装（一次性，需要电脑装有 Python 3.11+）】
+控制台的抖音功能依赖本地引擎环境，首次使用请双击：
+    scripts\引导安装-抖音引擎.bat
+按提示完成（会自动创建虚拟环境并下载浏览器组件，约 5 分钟）。
+
+【macOS】
+打开 xuhuohua.app：首次右键 → 打开（绕过未签名提示）。
+抖音引擎在 Mac 上需自行安装：cd douyin-auto-fire && python3 -m venv .venv && .venv/bin/python -m pip install -r requirements.txt && .venv/bin/python -m playwright install chromium
+
+【安全提醒】
+- 登录凭证只保存在本机，请勿外传
+- 请保持每天 1 次、少量好友的低频使用，防平台风控
+- 仅供个人学习研究，禁止商用

@@ -126,3 +126,10 @@
 - 新增 GitHub Actions：打 tag 自动构建 Windows exe 与 macOS app 并挂到 Release（macOS 由 CI 的 macOS runner 产出）
 - 官网/介绍页上线：https://lyzbcy.github.io/xuhuohua/（下载入口、功能介绍、捞鱼工作室、强制刷新组件）
 - 打包适配：frozen 模式路径推导（exe 放项目根即可定位全部资源）
+
+## 0.8.2 - 2026-09-09
+
+**修复 Release 安装包打不开**
+- 根因：CI 打包时 pythonnet 运行时 DLL 收集不完整（pywebview 的 WinForms 后端初始化失败）
+- 修复：显式收集 pythonnet/clr_loader 全量；CI 增加"启动冒烟测试"——构建后必须真启动出窗口才算成功
+- 分发包升级为开箱即用：exe + 抖音引擎源码 + 引导安装脚本（首次双击自动建环境）+ 使用说明

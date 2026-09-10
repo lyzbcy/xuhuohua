@@ -25,14 +25,21 @@ jobs:
       - name: Build exe
         run: |
           cd software
-          pyinstaller --noconfirm --windowed --icon ui/assets/icon.ico --name xuhuohua --add-data "ui;ui" --collect-all webview main.py
-      - name: Package zip
+          pyinstaller --noconfirm --windowed --icon ui/assets/icon.ico --name xuhuohua --add-data "ui;ui" --collect-all webview --collect-all pythonnet --collect-all clr_loader main.py
+      - name: Smoke test (窗口必须能拉起)
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path pkg | Out-Null
-          Copy-Item software/dist/xuhuohua/* pkg/ -Recurse -Force
-          Copy-Item VERSION pkg/VERSION -Force
-          Compress-Archive -Path pkg/* -DestinationPath xuhuohua-windows-x64.zip -Force
+          Start-Process "software/dist/xuhuohua/xuhuohua.exe"
+          Start-Sleep -Seconds 15
+          $p = Get-Process xuhuohua -ErrorAction SilentlyContinue
+          if (-not $p -or -not $p.MainWindowTitle) { Write-Error "启动冒烟测试失败：窗口未出现"; exit 1 }
+          Stop-Process -Name xuhuohua -Force
+          Write-Output "SMOKE_OK"
+      - name: Package portable zip
+        shell: pwsh
+        run: |
+          python scripts/make_portable_zip.py
+          Copy-Item xuhuohua-windows-x64.zip . -Force
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -53,7 +60,7 @@ jobs:
       - name: Build app
         run: |
           cd software
-          pyinstaller --noconfirm --windowed --name xuhuohua --add-data "ui:ui" --collect-all webview main.py
+          pyinstaller --noconfirm --windowed --name xuhuohua --add-data "ui:ui" --collect-all webview --collect-all pythonnet --collect-all clr_loader main.py
       - name: Package zip
         run: |
           mkdir -p pkg
