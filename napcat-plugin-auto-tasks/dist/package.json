@@ -1,0 +1,20 @@
+{
+  "name": "napcat-plugin-auto-tasks",
+  "plugin": "自动化任务插件",
+  "version": "2.0.0",
+  "type": "module",
+  "main": "index.mjs",
+  "description": "NapCat 自动化任务 (自动打卡/续火花/自定义任务/群公告)",
+  "author": "Chace",
+  "dependencies": {
+    "napcat-types": "0.0.16"
+  },
+  "napcat": {
+    "tags": [
+      "工具",
+      "定时任务"
+    ],
+    "minVersion": "4.14.0",
+    "homepage": ""
+  }
+}

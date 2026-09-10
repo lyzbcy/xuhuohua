@@ -46,10 +46,11 @@ def main():
                        PKG / "tools" / "napcat" / "shell")
     # 3) 续火花插件预部署（开箱即用）
     plugin = ROOT / "napcat-plugin-auto-tasks" / "dist"
-    pd = PKG / "tools" / "napcat" / "shell" / "plugins" / "auto-tasks"
-    pd.mkdir(parents=True, exist_ok=True)
-    for f in ("index.mjs", "package.json"):
-        shutil.copy2(plugin / f, pd / f)
+    if plugin.exists():
+        pd = PKG / "tools" / "napcat" / "shell" / "plugins" / "auto-tasks"
+        pd.mkdir(parents=True, exist_ok=True)
+        for f in ("index.mjs", "package.json"):
+            shutil.copy2(plugin / f, pd / f)
     # 4) 抖音引擎源码（不含凭证/venv/产物）
     n3 = copy_filtered(ROOT / "douyin-auto-fire", PKG / "douyin-auto-fire",
                        extra_exclude_files={"storage-state.json", "config.json", ".env"})
