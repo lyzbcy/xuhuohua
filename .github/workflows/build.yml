@@ -26,6 +26,11 @@ jobs:
         run: |
           cd software
           pyinstaller --noconfirm --windowed --icon ui/assets/icon.ico --name xuhuohua --add-data "ui;ui" --collect-all webview --collect-all pythonnet --collect-all clr_loader main.py
+      - name: Install WebView2 Runtime
+        shell: pwsh
+        run: |
+          curl -L -o webview2-installer.exe "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
+          Start-Process .\webview2-installer.exe -Args "/silent /install" -Wait
       - name: Smoke test (窗口必须能拉起)
         shell: pwsh
         run: |
