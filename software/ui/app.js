@@ -109,6 +109,9 @@ setInterval(() => { $("#statusbar-time").textContent = new Date().toLocaleTimeSt
 function renderState() {
   if (!state) return;
   $("#ver-foot").textContent = state.version;
+  // 运行环境未装：抖音页顶部显示一键安装横幅
+  const envPanel = $("#dy-env-panel");
+  if (envPanel) envPanel.style.display = (state.douyin && state.douyin.env_ready === false) ? "" : "none";
 
   const dy = state.douyin;
   const dyEl = $("#dash-douyin");
@@ -187,6 +190,16 @@ $("#dash-qq-start").addEventListener("click", qqStart);
 $("#dash-qq-send").addEventListener("click", () => qqSendNow());
 
 /* ---------- 抖音页 ---------- */
+$("#dy-setup-env").addEventListener("click", (e) => withBtn(e.target, async () => {
+  try {
+    const r = await call("douyin_setup_env");
+    $("#dy-env-note").textContent = r.started ? "安装中…请到弹出的窗口等进度跑完" : r.msg;
+    if (!r.started && r.msg.includes("已装好")) { envNoteAfterInstall(); }
+    setStatus(r.msg);
+  } catch (err) { alert("启动安装失败：" + err.message); }
+}));
+function envNoteAfterInstall() { setTimeout(pollState, 4000); }
+
 $("#dy-login-btn").addEventListener("click", (e) => withBtn(e.target, async () => {
   try {
     const r = await call("douyin_login");

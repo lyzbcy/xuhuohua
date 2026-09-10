@@ -30,6 +30,7 @@ class Api:
             "version": updater.get_version(),
             "douyin": {
                 "logged_in": douyin.logged_in(),
+                "env_ready": douyin.env_ready(),
                 "friends": douyin.friends(),
                 "has_placeholder": douyin.has_placeholder(),
                 "running": douyin.proc_status(),
@@ -80,6 +81,9 @@ class Api:
     # ---------- 抖音 ----------
     def douyin_login(self):
         return douyin.start_login()
+
+    def douyin_setup_env(self):
+        return douyin.setup_env()
 
     def douyin_run(self, dry_run=False):
         return douyin.run(bool(dry_run))

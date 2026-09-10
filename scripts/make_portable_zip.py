@@ -1,68 +1,76 @@
 # -*- coding: utf-8 -*-
-"""组装 Windows 便携分发包：
-xuhuohua.exe + 抖音引擎源码 + 引导安装脚本 + 使用说明。
-产出：xuhuohua-windows-x64.zip
+"""组装 Windows 便携分发包（小白版）：
+xuhuohua.exe + ①一键安装引擎.bat + NapCat(QQ引擎) + 抖音引擎源码 + 使用说明。
+产出：xuhuohua-windows-x64.zip（顶层目录：续火花控制台/）
 """
 import os
+import shutil
 import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PKG = ROOT / "pkg"
-EXE_DIR = ROOT / "software" / "dist" / "xuhuohua"
+OUT = ROOT / "xuhuohua-windows-x64.zip"
 
-EXCLUDE_DIRS = {".venv", ".venv-ci", "__pycache__", ".pytest_cache", "artifacts",
-                ".git", "node_modules", "build", "dist", ".idea", ".vscode"}
-EXCLUDE_FILES = {"storage-state.json", "storage-state.json.tmp", "config.json", ".env"}
+EXCLUDE_DIR_NAMES = {".venv", ".venv-ci", "__pycache__", ".pytest_cache",
+                     "artifacts", ".git", "build", "dist",
+                     ".idea", ".vscode", "config", "cache", "logs"}
+# 注：node_modules 不排除——NapCat shell 自带的 Node 运行时依赖必须随包
+EXCLUDE_FILE_SUFFIX = (".pyc", ".log", ".tmp")   # 注意：不能排除 .zip——PyInstaller 的 base_library.zip 必须随包
 
 
-def copy_tree(src: Path, dst: Path):
+def copy_filtered(src: Path, dst: Path, extra_exclude_files: set = frozenset()):
+    n = 0
     for root, dirs, files in os.walk(src):
-        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIRS]
+        dirs[:] = [d for d in dirs if d not in EXCLUDE_DIR_NAMES]
         for f in files:
-            if f in EXCLUDE_FILES or f.endswith((".pyc", ".log")):
+            if f.endswith(EXCLUDE_FILE_SUFFIX) or f in extra_exclude_files:
                 continue
             s = Path(root) / f
-            rel = s.relative_to(src)
-            d = dst / rel
+            d = dst / s.relative_to(src)
             d.parent.mkdir(parents=True, exist_ok=True)
-            d.write_bytes(s.read_bytes())
+            shutil.copy2(s, d)
+            n += 1
+    return n
 
 
 def main():
     if PKG.exists():
-        import shutil
         shutil.rmtree(PKG)
     PKG.mkdir(parents=True)
 
-    # 1) 应用本体（exe + _internal）
-    copy_tree(EXE_DIR, PKG)
-    # 2) VERSION
-    (PKG / "VERSION").write_text((ROOT / "VERSION").read_text(encoding="utf-8"))
-    # 3) 抖音引擎源码（含 requirements + 表情包，不含凭证/venv）
-    copy_tree(ROOT / "douyin-auto-fire", PKG / "douyin-auto-fire")
-    # 4) 引导安装脚本 + 使用说明 + README
-    (PKG / "scripts").mkdir()
-    for name in ("引导安装-抖音引擎.bat",):
-        src = ROOT / "scripts" / name
-        if src.exists():
-            (PKG / "scripts" / name).write_bytes(src.read_bytes())
-    for name in ("README.md", "使用说明.txt"):
-        src = ROOT / name
-        if src.exists():
-            (PKG / name).write_bytes(src.read_bytes())
+    # 1) 应用本体（PyInstaller 产物，原样全量）
+    n1 = copy_filtered(ROOT / "software" / "dist" / "xuhuohua", PKG)
+    # 2) NapCat QQ 引擎：tools/napcat/shell → 保持原相对结构
+    n2 = copy_filtered(ROOT / "tools" / "napcat" / "shell",
+                       PKG / "tools" / "napcat" / "shell")
+    # 3) 续火花插件预部署（开箱即用）
+    plugin = ROOT / "napcat-plugin-auto-tasks" / "dist"
+    pd = PKG / "tools" / "napcat" / "shell" / "plugins" / "auto-tasks"
+    pd.mkdir(parents=True, exist_ok=True)
+    for f in ("index.mjs", "package.json"):
+        shutil.copy2(plugin / f, pd / f)
+    # 4) 抖音引擎源码（不含凭证/venv/产物）
+    n3 = copy_filtered(ROOT / "douyin-auto-fire", PKG / "douyin-auto-fire",
+                       extra_exclude_files={"storage-state.json", "config.json", ".env"})
+    # 5) 一键安装脚本 / 说明 / 版本
+    shutil.copy2(ROOT / "①一键安装引擎.bat", PKG / "①一键安装引擎.bat")
+    shutil.copy2(ROOT / "使用说明.txt", PKG / "使用说明.txt")
+    shutil.copy2(ROOT / "README.md", PKG / "README.md")
+    shutil.copy2(ROOT / "VERSION", PKG / "VERSION")
 
-    # 5) 打 zip
-    out = ROOT / "xuhuohua-windows-x64.zip"
-    if out.exists():
-        out.unlink()
-    with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
+    # 打包（arcname 以 续火花控制台/ 开头）
+    if OUT.exists():
+        OUT.unlink()
+    total = 0
+    with zipfile.ZipFile(OUT, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as z:
         for root, dirs, files in os.walk(PKG):
-            for f in files:
+            for f in sorted(files):
                 fp = Path(root) / f
-                z.write(fp, Path('续火花控制台') / fp.relative_to(PKG))
-    size = out.stat().st_size / 1024 / 1024
-    print(f"ZIP_OK {out} {size:.1f} MB")
+                z.write(fp, Path("续火花控制台") / fp.relative_to(PKG))
+                total += 1
+    print(f"ZIP_OK {OUT.name} {OUT.stat().st_size/1048576:.1f} MB "
+          f"app={n1} napcat={n2} douyin={n3} total={total}")
 
 
 if __name__ == "__main__":

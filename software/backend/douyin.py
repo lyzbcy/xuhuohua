@@ -7,9 +7,10 @@ import threading
 from pathlib import Path
 
 from backend import logger
-from backend.paths import (DOUYIN_CONFIG, DOUYIN_DIR, DOUYIN_ENV, DOUYIN_LOCK,
-                           DOUYIN_STATE, DOUYIN_VENV_PY, PLACEHOLDER_PREFIX,
-                           SOFTWARE_DIR)
+from backend.paths import (DOUYIN_BOOTSTRAP, DOUYIN_CONFIG, DOUYIN_DEPS,
+                           DOUYIN_DIR, DOUYIN_ENV, DOUYIN_LOCK,
+                           DOUYIN_RUNTIME_PY, DOUYIN_STATE, DOUYIN_VENV_PY,
+                           PLACEHOLDER_PREFIX, SOFTWARE_DIR)
 from backend.winproc import CREATE_NO_WINDOW, run_cmd
 
 _procs: dict[str, subprocess.Popen] = {}
@@ -18,6 +19,34 @@ _lock = threading.Lock()
 
 def _venv_ready() -> bool:
     return DOUYIN_VENV_PY.exists()
+
+
+def engine_python() -> str:
+    """抖音引擎解释器：开发机用 venv；分发包用嵌入式 runtime（免装 Python）。"""
+    if DOUYIN_VENV_PY.exists():
+        return str(DOUYIN_VENV_PY)
+    if DOUYIN_RUNTIME_PY.exists():
+        return str(DOUYIN_RUNTIME_PY)
+    return ""
+
+
+def env_ready() -> bool:
+    """引擎环境就绪 = 有解释器（依赖由引导脚本保证装齐）。"""
+    return bool(engine_python())
+
+
+def setup_env() -> dict:
+    """启动「①一键安装引擎.bat」：下载嵌入式 Python + 装依赖 + 浏览器组件。"""
+    import subprocess
+    if not DOUYIN_BOOTSTRAP.exists():
+        return {"started": False, "msg": "找不到安装脚本：" + str(DOUYIN_BOOTSTRAP)}
+    if env_ready():
+        return {"started": False, "msg": "运行环境已装好，无需重复安装"}
+    subprocess.Popen(["cmd", "/c", str(DOUYIN_BOOTSTRAP)],
+                     cwd=str(DOUYIN_BOOTSTRAP.parent),
+                     creationflags=subprocess.CREATE_NEW_CONSOLE)
+    logger.info("[抖音] 引擎安装已启动（弹出的黑窗是安装进度，请等它跑完，约 5-10 分钟）", source="douyin")
+    return {"started": True, "msg": "安装程序已弹出，请在那个窗口等进度跑完（约 5-10 分钟），完成后回来点「演练」验证"}
 
 
 def logged_in() -> bool:
@@ -90,10 +119,12 @@ def has_placeholder() -> bool:
 
 
 def _engine_env() -> dict:
-    """子引擎输出强制 UTF-8，避免干净机器上 GBK 乱码。"""
+    """子引擎环境：强制 UTF-8；嵌入式 runtime 时加 PYTHONPATH 指向 deps。"""
     env = dict(os.environ)
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    if engine_python() == str(DOUYIN_RUNTIME_PY) and DOUYIN_DEPS.exists():
+        env["PYTHONPATH"] = str(DOUIN_DEPS)
     return env
 
 
@@ -130,13 +161,13 @@ def get_config() -> dict:
 
 def save_config(cfg: dict) -> None:
     """先写临时文件 → 用引擎解析器校验 → 通过才原子替换。绝不留下坏配置。"""
-    if not _venv_ready():
-        raise RuntimeError("抖音环境未安装（douyin-auto-fire/.venv 缺失）")
+    if not env_ready():
+        raise RuntimeError("运行环境还没安装：请点「一键安装引擎」")
     tmp = DOUYIN_CONFIG.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     env = _engine_env()
     env["TASK_CONFIG"] = str(tmp)
-    r = run_cmd([str(DOUYIN_VENV_PY), "-c",
+    r = run_cmd([engine_python(), "-c",
                  "from app.config import load_settings, load_task;"
                  "load_task(load_settings())"], cwd=DOUYIN_DIR, env=env)
     if r.returncode != 0:
@@ -154,7 +185,7 @@ def _spawn(key: str, args: list[str]) -> dict:
         if p and p.poll() is None:
             return {"started": False, "msg": "已有同名任务在运行中"}
         proc = subprocess.Popen(
-            [str(DOUYIN_VENV_PY)] + args, cwd=DOUYIN_DIR,
+            [engine_python()] + args, cwd=DOUYIN_DIR,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace",
             env=_engine_env(),
@@ -198,8 +229,8 @@ def _pump(key: str, proc: subprocess.Popen) -> None:
 
 def start_login() -> dict:
     """打开可见浏览器让用户扫码；后台轮询登录 Cookie，成功自动保存凭证。"""
-    if not _venv_ready():
-        return {"started": False, "msg": "抖音环境未安装（缺 .venv）"}
+    if not env_ready():
+        return {"started": False, "msg": "运行环境还没装：请先点上面的「一键安装引擎」（约 5-10 分钟，只需一次）"}
     if not SOFTWARE_DIR.joinpath("backend", "login_gui.py").exists():
         return {"started": False, "msg": "缺少 backend/login_gui.py"}
     logger.info("[抖音] 打开浏览器等待扫码（5 分钟内有效，登录后自动保存）", source="douyin")
@@ -207,8 +238,8 @@ def start_login() -> dict:
 
 
 def run(dry_run: bool = False) -> dict:
-    if not _venv_ready():
-        return {"started": False, "msg": "抖音环境未安装（缺 .venv）"}
+    if not env_ready():
+        return {"started": False, "msg": "运行环境还没装：请先点上面的「一键安装引擎」（约 5-10 分钟，只需一次）"}
     if not logged_in():
         return {"started": False, "msg": "还没有登录抖音，请先在「抖音」页点「打开扫码登录」"}
     if has_placeholder():

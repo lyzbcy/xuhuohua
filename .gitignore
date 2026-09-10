@@ -36,6 +36,8 @@ software/build/
 /xuhuohua-macos.zip
 
 /pkg/
+/runtime/
+/runtime_tmp/
 
 # ===== 系统杂项 =====
 .DS_Store

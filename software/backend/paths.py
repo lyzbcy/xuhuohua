@@ -16,9 +16,14 @@ else:
     SOFTWARE_DIR = Path(__file__).resolve().parents[1]        # software/
     UI_DIR = SOFTWARE_DIR / "ui"
 
-PROJECT_ROOT = SOFTWARE_DIR                                   # 续火花/
+# frozen：exe 就在项目根；源码：项目根是 software/ 的上一级
+PROJECT_ROOT = SOFTWARE_DIR if FROZEN else SOFTWARE_DIR.parent
 DOUYIN_DIR = PROJECT_ROOT / "douyin-auto-fire"
 DOUYIN_VENV_PY = DOUYIN_DIR / ".venv" / "Scripts" / "python.exe"
+# 便携运行时：分发包给小白用的嵌入式 Python（免装 Python）
+DOUYIN_RUNTIME_PY = PROJECT_ROOT / "runtime" / "python.exe"
+DOUYIN_DEPS = DOUYIN_DIR / "deps"
+DOUYIN_BOOTSTRAP = PROJECT_ROOT / "①一键安装引擎.bat"
 DOUYIN_CONFIG = DOUYIN_DIR / "config.json"
 DOUYIN_STATE = DOUYIN_DIR / "storage-state.json"
 DOUYIN_ENV = DOUYIN_DIR / ".env"
