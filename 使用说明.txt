@@ -1,6 +1,11 @@
 使用说明（自动续火花 · 控制台）
 ================================
 
+【环境要求】
+- Windows 10 需装有 Microsoft Edge WebView2 运行时（Win11 自带；没有的话到
+  https://developer.microsoft.com/microsoft-edge/webview2/ 下载 Evergreen 安装器装一次即可）
+- 抖音引擎首次安装需要 Python 3.11+
+
 【最快上手】
 1. 双击 xuhuohua.exe 打开控制台
 2. 「抖音」页扫码登录（自动保存）；「QQ」页点启动并扫码（一次即可）
