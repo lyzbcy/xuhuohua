@@ -241,10 +241,13 @@ def _pump(key: str, proc: subprocess.Popen) -> None:
             continue
         logger.log("OUT", line, source="douyin")
     code = proc.wait()
+    from backend import notify as _notify
     if code == 0:
         logger.ok("[抖音] {0} 完成（退出码 0）".format(key), source="douyin")
+        _notify.notify_event("success", "抖音「{0}」完成 ✅".format(key))
     else:
         logger.fail("[抖音] {0} 没有成功（退出码 {1}）。点左侧「日志」页看第二个框可定位原因".format(key, code), source="douyin")
+        _notify.notify_event("failure", "抖音「{0}」异常退出（码 {1}），请打开软件查看日志".format(key, code))
 
 
 def start_login() -> dict:

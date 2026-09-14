@@ -42,7 +42,7 @@ _remove_mark_of_the_web()
 
 import webview  # noqa: E402
 
-from backend import douyin, logger, pool, qq, scheduler, setup_env, updater  # noqa: E402
+from backend import douyin, logger, notify, pool, qq, scheduler, setup_env, updater  # noqa: E402
 from backend.paths import (DOUYIN_RUNLOG, DOUYIN_STICKERS, FETCH_FRIENDS_SCRIPT,  # noqa: E402
                            LOG_DIR, NAPCAT_DIR, PROJECT_ROOT, UI_DIR,
                            UI_STICKER_DIR)
@@ -214,6 +214,16 @@ class Api:
 
     def check_updates(self):
         return updater.check_updates()
+
+    # ---------- 设置 / 通知 ----------
+    def notify_get(self):
+        return {"ok": True, "settings": notify.get_settings()}
+
+    def notify_set(self, patch):
+        return {"ok": True, "settings": notify.save_settings(dict(patch))}
+
+    def notify_test(self):
+        return notify.send_text("这是一条测试消息：通知通道已打通 ✅", force=True)
 
     def apply_updates(self):
         return updater.apply_updates()

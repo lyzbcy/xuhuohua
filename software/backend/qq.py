@@ -406,5 +406,8 @@ def qq_send_now() -> dict:
                         "msg": "已发送" if ok else "失败: {0}".format(r.get("message") or r.get("wording") or "未知")})
         (logger.ok if ok else logger.fail)("[QQ] 立即续火花 → {0}: {1}".format(uid, results[-1]["msg"]), source="qq")
     sent = sum(1 for x in results if x["ok"])
+    from backend import notify as _notify
+    _notify.notify_event("success" if sent == len(results) else "failure",
+                         "QQ 立即续火花：{0}/{1} 位成功".format(sent, len(results)))
     return {"ok": sent > 0, "results": results,
             "msg": "已发送 {0}/{1} 位好友".format(sent, len(results))}

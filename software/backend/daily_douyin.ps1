@@ -21,4 +21,18 @@ if (-not $state -and -not $hasCookie) { L "未登录抖音，跳过本次定时�
 L "定时任务触发，开始运行"
 & $py run.py 2>&1 | ForEach-Object { L ("[OUT] " + $_) }
 L "本次运行结束（退出码 $LASTEXITCODE）"
+
+# 企业微信通知（设置页配置后启用）
+$cfgFile = Join-Path $projRoot "config\settings.json"
+if (Test-Path $cfgFile) {
+  try {
+    $cfg = Get-Content $cfgFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    $hook = $cfg.wecom_webhook
+    if ($hook -and ($LASTEXITCODE -eq 0 -and $cfg.notify_on_success -or $LASTEXITCODE -ne 0 -and $cfg.notify_on_failure)) {
+      $last = (Select-String -Path $log -Pattern "执行结束: (.+)$" | Select-Object -Last 1).Matches.Groups[1].Value
+      $body = @{ msgtype = "text"; text = @{ content = "【续火花】每日抖音任务结束：$last（退出码 $LASTEXITCODE）" } } | ConvertTo-Json -Compress
+      try { Invoke-RestMethod -Uri $hook -Method Post -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($body)) | Out-Null } catch { L "企微通知发送失败: $_" }
+    }
+  } catch { L "读取通知设置失败: $_" }
+}
 exit $LASTEXITCODE

@@ -1,0 +1,5 @@
+{
+  "wecom_webhook": "",
+  "notify_on_success": true,
+  "notify_on_failure": true
+}

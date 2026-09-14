@@ -24,6 +24,7 @@
       <button class="nav-item" data-page="pool">💬 话术库</button>
       <button class="nav-item" data-page="schedule">⏰ 定时</button>
       <button class="nav-item" data-page="logs">📋 日志</button>
+      <button class="nav-item" data-page="settings">⚙️ 设置</button>
       <button class="nav-item" data-page="about">🐟 关于</button>
     </nav>
     <div class="sidebar-foot">v<span id="ver-foot">…</span> · 捞鱼工作室</div>
@@ -241,6 +242,30 @@
         <div class="panel-title">抖音发送日志（最近 80 行）</div>
         <pre class="logbox" id="log-douyin"></pre>
         <p class="hint">🔴 出问题先看这里红色的行。如需求助：点「打开日志文件夹」，把日期最新的文件发给帮你装软件的人。</p>
+      </div>
+    </section>
+
+    <!-- 设置 -->
+    <section class="page" id="page-settings">
+      <h2>设置</h2>
+      <div class="panel">
+        <div class="panel-title">📣 企业微信通知（可选）</div>
+        <p class="hint">在企微群里添加「群机器人」后，把它的 Webhook 地址粘贴到这里。每天定时发送完成后 / 出错时，会把结果推到群里——人在外面也能知道火花续没续上。</p>
+        <div class="form-row"><label>机器人 Webhook</label>
+          <input type="text" id="nt-webhook" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=…"></div>
+        <div class="chk-row">
+          <label><input type="checkbox" id="nt-on-success"> 每日发送完成后通知</label>
+          <label><input type="checkbox" id="nt-on-failure"> 出错时通知</label>
+        </div>
+        <div class="btn-row">
+          <button class="btn primary" id="nt-save">💾 保存</button>
+          <button class="btn" id="nt-test">📨 发送测试消息</button>
+          <span class="hint" id="nt-note" style="margin:0"></span>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">🔊 每日定时提醒（答疑）</div>
+        <p class="hint">软件<b>不会</b>开机自启；每天到点的发送由 Windows 计划任务独立完成（电脑需开机联网）。QQ 侧发送需要 NapCat 引擎在运行——重启电脑后记得打开软件点一次「启动 QQ」。</p>
       </div>
     </section>
 

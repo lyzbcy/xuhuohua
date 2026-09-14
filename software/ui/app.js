@@ -51,6 +51,7 @@ function gotoPage(name) {
   $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.page === name));
   $$(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + name));
   if (name === "logs") refreshLogs();
+  if (name === "settings") loadNotify();
   if (name === "about") loadAbout();
   if (name === "schedule") loadSchedule();
 }
@@ -505,6 +506,35 @@ async function refreshLogs() {
 }
 $("#log-refresh").addEventListener("click", refreshLogs);
 $("#log-open").addEventListener("click", () => call("open_folder", "logs").catch(() => { }));
+
+/* ---------- 设置页（企微通知） ---------- */
+async function loadNotify() {
+  try {
+    const r = await call("notify_get");
+    const s = r.settings || {};
+    $("#nt-webhook").value = s.wecom_webhook || "";
+    $("#nt-on-success").checked = !!s.notify_on_success;
+    $("#nt-on-failure").checked = !!s.notify_on_failure;
+  } catch (e) { }
+}
+$("#nt-save").addEventListener("click", (e) => withBtn(e.target, async () => {
+  try {
+    const r = await call("notify_set", {
+      wecom_webhook: $("#nt-webhook").value.trim(),
+      notify_on_success: $("#nt-on-success").checked,
+      notify_on_failure: $("#nt-on-failure").checked,
+    });
+    $("#nt-note").textContent = "已保存 ✓";
+    setStatus("通知设置已保存");
+  } catch (err) { alert("保存失败：" + err.message); }
+}));
+$("#nt-test").addEventListener("click", (e) => withBtn(e.target, async () => {
+  $("#nt-note").textContent = "发送中…";
+  try {
+    const r = await call("notify_test");
+    $("#nt-note").textContent = r.ok ? "测试消息已发送，去企微群看看 ✓" : r.msg;
+  } catch (err) { $("#nt-note").textContent = "失败：" + err.message; }
+}));
 
 /* ---------- 关于页 ---------- */
 async function loadAbout() {
