@@ -1,8 +1,7 @@
-"""Optional post-run notifications through the cloud Agent's WeCom channel.
+"""Optional post-run notifications through a private WeCom group webhook.
 
-The private notify-command file contains one absolute executable path. The
-executable reads one UTF-8 message on stdin and sends it through the Agent's
-already configured WeCom long-connection bot. No bot credentials live here.
+The private notify-webhook file holds the group robot URL. The older
+notify-command adapter remains supported for installations that already use it.
 """
 
 import argparse
@@ -11,6 +10,9 @@ import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -22,6 +24,7 @@ except ImportError:  # Lets Windows CI test the pure result parser; runtime is L
 SKILL = Path(__file__).resolve().parents[1]
 ROOT = SKILL.parent
 COMMAND_FILE = SKILL / "notify-command"
+WEBHOOK_FILE = SKILL / "notify-webhook"
 STATE_FILE = SKILL / "notify-state.json"
 QQ_CONFIG = SKILL / "qq-data/config/plugins/napcat-plugin-auto-tasks/config.json"
 BEIJING = timezone(timedelta(hours=8), "Asia/Shanghai")
@@ -41,9 +44,51 @@ def command_path() -> Path | None:
     return command
 
 
-def send(command: Path, message: str) -> bool:
+def webhook_url() -> str | None:
+    if not WEBHOOK_FILE.exists():
+        return None
+    if WEBHOOK_FILE.stat().st_mode & 0o077:
+        raise ValueError("notify-webhook 权限过宽，请 chmod 600")
+    url = WEBHOOK_FILE.read_text(encoding="utf-8").strip()
+    parsed = urllib.parse.urlparse(url)
+    query = urllib.parse.parse_qs(parsed.query)
+    if (parsed.scheme != "https" or parsed.hostname != "qyapi.weixin.qq.com"
+            or parsed.path != "/cgi-bin/webhook/send" or not query.get("key")
+            or "\n" in url):
+        raise ValueError("notify-webhook 不是有效的企业微信群机器人地址")
+    return url
+
+
+def transport() -> tuple[str, str | Path] | None:
+    url = webhook_url()
+    if url:
+        return "webhook", url
+    command = command_path()
+    return ("command", command) if command else None
+
+
+def send(destination: tuple[str, str | Path], message: str) -> bool:
+    kind, value = destination
+    if kind == "webhook":
+        payload = json.dumps({"msgtype": "text", "text": {"content": message}},
+                             ensure_ascii=False).encode("utf-8")
+        request = urllib.request.Request(str(value), data=payload,
+                                         headers={"Content-Type": "application/json; charset=utf-8"},
+                                         method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                result = json.load(response)
+            if not isinstance(result, dict):
+                raise ValueError("企业微信响应格式无效")
+            if result.get("errcode") == 0:
+                return True
+            print(f"企业微信通知发送失败，接口错误码 {result.get('errcode', 'unknown')}", file=sys.stderr)
+        except (OSError, ValueError, urllib.error.URLError) as exc:
+            # Never include the URL: its key is a credential.
+            print(f"企业微信通知发送失败：{type(exc).__name__}", file=sys.stderr)
+        return False
     try:
-        result = subprocess.run([str(command)], input=message + "\n", text=True,
+        result = subprocess.run([str(value)], input=message + "\n", text=True,
                                 encoding="utf-8",
                                 stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                                 timeout=30, check=False)
@@ -86,7 +131,7 @@ def qq_result(config: dict, now: datetime) -> tuple[str, str] | None:
     return None
 
 
-def notify_qq(command: Path, now: datetime) -> int:
+def notify_qq(destination: tuple[str, str | Path], now: datetime) -> int:
     if fcntl is None:
         raise RuntimeError("QQ 结果通知仅支持 Linux")
     if not QQ_CONFIG.is_file():
@@ -118,7 +163,7 @@ def notify_qq(command: Path, now: datetime) -> int:
         if state.get("qq_notified_day") == day:
             return 0
         message = f"续火花 QQ 每日任务{status}｜{day} 北京时间｜{detail}"
-        if not send(command, message):
+        if not send(destination, message):
             return 1
         state["qq_notified_day"] = day
         state_file.seek(0)
@@ -135,26 +180,26 @@ def main() -> int:
     parser.add_argument("--exit-code", type=int)
     args = parser.parse_args()
     try:
-        command = command_path()
+        destination = transport()
     except (OSError, ValueError) as exc:
         print(f"企业微信通知未启用：{exc}", file=sys.stderr)
         return 1
-    if command is None:
+    if destination is None:
         if args.platform == "test":
-            print("尚未配置企业微信长连接通知适配命令", file=sys.stderr)
+            print("尚未配置企业微信通知链接", file=sys.stderr)
             return 2
         return 0  # User declined optional WeCom setup.
     now = datetime.now(BEIJING)
     if args.platform == "test":
-        return 0 if send(command, "续火花企业微信通知测试｜连接正常，不会触发续火花发送") else 1
+        return 0 if send(destination, "续火花企业微信通知测试｜连接正常，不会触发续火花发送") else 1
     if args.platform == "qq":
-        return notify_qq(command, now)
+        return notify_qq(destination, now)
     if args.exit_code is None:
         parser.error("抖音通知需要 --exit-code")
     status = "成功" if args.exit_code == 0 else "失败"
     detail = "已执行完毕" if args.exit_code == 0 else f"退出码 {args.exit_code}，请检查 logs/cron.log"
     message = f"续火花 抖音每日任务{status}｜{now:%Y-%m-%d %H:%M} 北京时间｜{detail}"
-    return 0 if send(command, message) else 1
+    return 0 if send(destination, message) else 1
 
 
 if __name__ == "__main__":

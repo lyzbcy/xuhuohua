@@ -26,6 +26,8 @@ def check(zip_path: Path) -> None:
             "/_internal/backend/assets/auto-tasks/webui/index.html",
             "/douyin-auto-fire/run.py",
             "/cloud-skill/xuhuohua-cloud/SKILL.md",
+            "/cloud-skill/xuhuohua-cloud/scripts/check-update.sh",
+            "/cloud-skill/xuhuohua-cloud/scripts/update-skill.py",
             "/cloud-skill/xuhuohua-cloud/scripts/install.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/install-qq.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/install-skill.sh",
@@ -48,7 +50,8 @@ def check(zip_path: Path) -> None:
             basename = parts[-1]
             if (basename.startswith(".env") or basename.startswith("storage-state")
                     or basename in {"settings.json", "accounts.json",
-                                    "notify-command", "notify-state.json"}
+                                    "notify-command", "notify-webhook", "notify-state.json",
+                                    ".last-update-check", ".update.log", ".update.lock"}
                     or "storage_state" in parts or "artifacts" in parts
                     or "qq-data" in parts):
                 forbidden.append(name)

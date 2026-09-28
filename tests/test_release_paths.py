@@ -54,6 +54,7 @@ class ReleasePathTests(unittest.TestCase):
     def test_cloud_export_excludes_local_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            (root / "VERSION").write_text("0.13.5\n", encoding="ascii")
             skill = root / "cloud-skill" / "xuhuohua-cloud"
             (skill / "scripts").mkdir(parents=True)
             (skill / "SKILL.md").write_text("skill", encoding="utf-8")
@@ -61,12 +62,14 @@ class ReleasePathTests(unittest.TestCase):
                          "compose.qq.yaml", "qq-watchdog.sh", "verify-qq.sh",
                          "qq-qr.sh", "configure-qq.py", "prepare-douyin.sh",
                          "start-douyin-desktop.sh", "stop-douyin-desktop.sh",
-                         "login-douyin.sh", "notify-result.py"):
+                         "login-douyin.sh", "notify-result.py",
+                         "check-update.sh", "update-skill.py"):
                 (skill / "scripts" / name).write_text("test", encoding="utf-8")
             (skill / "scripts" / "qq-qr.sh").write_bytes(b"#!/bin/bash\r\necho ok\r\n")
             private = skill / "qq-data" / "config"
             private.mkdir(parents=True)
             (private / "plugins.json").write_text("secret", encoding="utf-8")
+            (skill / "notify-webhook").write_text("private-url", encoding="utf-8")
             engine = root / "douyin-auto-fire"
             (engine / "app").mkdir(parents=True)
             (engine / "scripts").mkdir()
@@ -90,9 +93,11 @@ class ReleasePathTests(unittest.TestCase):
                 self.assertIn("qq-plugin/LICENSE", archive.namelist())
                 self.assertIn("qq-plugin/webui/index.html", archive.namelist())
                 self.assertIn("xuhuohua-cloud/scripts/install-qq.sh", archive.namelist())
+                self.assertEqual(archive.read("xuhuohua-cloud/VERSION").strip(), b"0.13.5")
                 self.assertIn("douyin-auto-fire/scripts/login.py", archive.namelist())
                 self.assertEqual(archive.read("xuhuohua-cloud/scripts/qq-qr.sh"), b"#!/bin/bash\necho ok\n")
                 self.assertFalse(any("storage-state" in n or n.endswith("config.json")
+                                     or n.endswith("notify-webhook")
                                      or "qq-data" in n
                                      for n in archive.namelist()))
 

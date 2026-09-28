@@ -16,11 +16,15 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip
 https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.sha256
 ```
 
-在服务器的私有目录分别下载，执行 `sha256sum -c xuhuohua-cloud.zip.sha256` 后解压。校验失败或资产不存在时停止并告知用户；不要改用旧包或源码分支。确认当前 Agent 的 Skill 目录，再运行 `bash xuhuohua-cloud/scripts/install-skill.sh <Agent 的 skills 目录>`。安装器只复制说明并记录解压目录。**后续命令始终在保留的解压目录执行**；重新加载 Skill 时先读取 Skill 目录里的 `release-path.txt` 并切换到该目录。如果本轮无法重新加载，直接读取解压后的此文件继续。不要把 `qq-data/`、`storage-state.json` 或任何用户配置复制进 Skill 目录。
+在服务器的私有目录分别下载，执行 `sha256sum -c xuhuohua-cloud.zip.sha256` 后解压。校验失败或资产不存在时停止并告知用户；不要改用旧包或源码分支。确认当前 Agent 的 Skill 目录，再运行 `bash xuhuohua-cloud/scripts/install-skill.sh <Agent 的 skills 目录>`。安装器复制 Skill 说明、版本与静默更新组件，并记录解压目录。**后续命令始终在保留的解压目录执行**；重新加载 Skill 时先读取 Skill 目录里的 `release-path.txt` 并切换到该目录。如果本轮无法重新加载，直接读取解压后的此文件继续。不要把 `qq-data/`、`storage-state.json` 或任何用户配置复制进 Skill 目录。
+
+**每次使用本 Skill 的第一步**：在已安装的 Agent Skill 目录执行 `bash xuhuohua-cloud/check-update.sh`，然后立即继续当前工作，不等待更新。脚本每天北京时间首次使用时在后台静默检查最新 Release；失败继续用旧版，下次使用再重试。初次安装尚未有该文件时跳过此步，按本节先安装。
+
+**从旧版首次升级**：旧版没有更新入口，需在任务空闲时手动校验最新云端 ZIP，把包内公共文件覆盖到**原解压目录**，不要删除目录或另建第二套 cron；保留 `qq-data/`、`douyin-auto-fire/config.json`、`storage-state.json`、`notify-webhook` 等私有文件，再重跑 `install-skill.sh`。已有 QQ/抖音定时任务保持原路径；若旧版缺结果检查 cron，再按现有配置重跑对应安装脚本，且不要重新扫码或真实补发。
 
 ## 2. 先问用户
 
-一次问清：是否启用 **QQ**、是否启用 **抖音**，各自希望的**北京时间 HH:MM**。同时主动建议配置**企业微信长连接机器人**接收每日结果，询问是否启用；明确这是可选项，用户跳过也能正常续火花。只安装用户选择的平台；都不开启就停止。配置好友时再分别询问目标和本地文字话术，建议先从少量好友开始。不要先运行正式发送。
+一次问清：是否启用 **QQ**、是否启用 **抖音**，各自希望的**北京时间 HH:MM**。同时主动建议配置**企业微信群机器人 webhook 推送链接**接收每日结果，询问是否启用；用户已经给出链接时直接沿用私有上下文，不要再索取或复述。明确通知是可选项，跳过也能正常续火花。只安装用户选择的平台；都不开启就停止。配置好友时再分别询问目标和本地文字话术，建议先从少量好友开始。不要先运行正式发送。
 
 ## 3. QQ 登录与定时
 
@@ -36,14 +40,18 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 3. 在持续运行的终端执行 `bash xuhuohua-cloud/scripts/login-douyin.sh`。用户亲自操作可见浏览器完成扫码、可能出现的人脸验证；确认浏览器显示已登录后，Agent 才给登录脚本输入 Enter。脚本将登录态保存为服务器私有的 `douyin-auto-fire/storage-state.json`。结束后运行 `bash xuhuohua-cloud/scripts/stop-douyin-desktop.sh`。
 4. 询问好友昵称和本地文字话术，基于 `douyin-auto-fire/config.example.json` 创建私有 `config.json`，先用 1 位好友和 1 条文字消息，开启防重复，并保持文件权限为 600。执行 `cd douyin-auto-fire && .venv/bin/python run.py --dry-run` 验证登录态和目标。通过后运行 `bash xuhuohua-cloud/scripts/install.sh HH:MM` 注册北京时间每日 cron；正式运行默认无头。
 
-## 5. 可选的企业微信长连接结果通知
+## 5. 可选的企业微信群机器人结果通知
 
-用户愿意配置时，使用**当前云端 Agent 官方支持的企业微信长连接机器人接入方式**，在私有会话中完成连接、选定接收人并测试发送。这里需要的是 Agent 已连接的长连接通道，不要把企业微信群 Webhook 当成同一功能，也不要索取或输出机器人密钥。若 Agent 暂不支持长连接或无法做无交互发送，清楚说明通知功能暂不可用，QQ/抖音部署仍继续。
+用户愿意配置时，使用用户提供的**企业微信群机器人 webhook 推送链接**；这是本 Skill 支持的结果推送方式，**不要求企业微信长连接机器人**。把完整链接只写入解压目录 `xuhuohua-cloud/notify-webhook`，执行 `chmod 600 xuhuohua-cloud/notify-webhook`。不要在命令行参数、聊天回复、公开仓库或日志里再次打印该链接及其中的 `key`；已给出的链接无需重复索取。若用户不配置，保持该文件不存在即可。
 
-让 Agent 在服务器私有目录创建一个可执行的发送适配命令：它从标准输入读取**一条 UTF-8 文本**，调用已连接的企业微信长连接通道发给用户；成功退出 0，失败返回非 0。只把该命令的**绝对路径**写入解压目录 `xuhuohua-cloud/notify-command`，执行 `chmod 600 xuhuohua-cloud/notify-command`，适配命令本身也仅供当前用户执行。适配命令可调用当前 Agent 的正式发送接口，具体命令以该 Agent 实际安装版本为准，不要猜测 CLI 参数。运行 `python3 xuhuohua-cloud/scripts/notify-result.py test`，确认用户在企业微信私聊中收到测试消息，才向用户报告通知已启用。不要在公开仓库、聊天或日志中写入密钥、会话标识或私有适配脚本。
+运行 `python3 xuhuohua-cloud/scripts/notify-result.py test`，确认目标企业微信群收到了测试消息，才向用户报告通知已启用。脚本仅向 `https://qyapi.weixin.qq.com/cgi-bin/webhook/send` 发送文本消息并检查接口错误码。旧版的私有 `notify-command` 适配命令仍兼容，但新安装优先使用 webhook；如果两者都有，以 `notify-webhook` 为准。
 
-启用后，抖音每日 cron 在实际运行结束时按退出码发**一条**成功或失败通知；QQ 只读检查读取插件的整批成功/失败记录，整批结束后发**一条**，到点后 60 分钟无完成记录则发失败通知。消息只含平台、结果、北京时间和简要数量/错误提示，不带好友名单与凭证。发送失败记录在 `logs/cron.log` 或 `logs/qq-result.log`，不改变续火花任务本身的结果。没有 `notify-command` 时两个平台照常运行，不发通知；不应把测试发送当成续火花任务。
+启用后，抖音每日 cron 在实际运行结束时按退出码发**一条**成功或失败通知；QQ 只读检查读取插件的整批成功/失败记录，整批结束后发**一条**，到点后 60 分钟无完成记录则发失败通知。消息只含平台、结果、北京时间和简要数量/错误提示，不带好友名单与凭证。发送失败记录在 `logs/cron.log` 或 `logs/qq-result.log`，不改变续火花任务本身的结果。没有通知配置时两个平台照常运行，不发通知；不应把测试发送当成续火花任务。
 
-## 6. 完成检查
+## 6. Skill 静默更新
+
+`check-update.sh` 在每天北京时间首次使用时立即后台运行，当前任务继续使用已加载版本。后台 updater 对照本地 `VERSION` 与 GitHub 最新正式 Release，下载云端包和 SHA-256 校验文件，只原子替换 Skill 说明与包内脚本，最后更新版本号；失败保留旧版本并在下次使用重试。日志在已安装 Skill 目录的 `.update.log`。`notify-webhook`、`notify-command`、QQ 登录态、抖音 Cookie、好友配置、定时任务及正在运行的任务均不覆盖。抖音引擎依赖与 QQ 插件的升级另行维护，不把静默更新当成运行环境迁移。
+
+## 7. 完成检查
 
 报告已启用的平台、北京时间、扫码/登录验证结果、QQ 容器和 cron、抖音 cron、企业微信通知是否启用及日志路径。QQ 可看 `docker logs xuhuohua-napcat`、`logs/qq-watchdog.log` 与 `logs/qq-result.log`；抖音可看 `logs/cron.log` 与 `douyin-auto-fire/artifacts/run.log`。**不要在聊天或公开仓库展示 Cookie、Token、登录态、配置全文或二维码以外的私有数据。**只在用户已经配置并明确启用后等待每日定时；首次设置与验证阶段不真实发送。

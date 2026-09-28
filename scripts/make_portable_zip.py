@@ -18,7 +18,8 @@ EXCLUDE_DIR_NAMES = {".venv", ".venv-ci", "__pycache__", ".pytest_cache",
                      "storage_state", "qq-data", "desktop-logs"}
 # 注：node_modules 不排除——NapCat shell 自带的 Node 运行时依赖必须随包
 EXCLUDE_FILE_SUFFIX = (".pyc", ".log", ".tmp")   # 注意：不能排除 .zip——PyInstaller 的 base_library.zip 必须随包
-EXCLUDE_PRIVATE_FILES = {"notify-command", "notify-state.json"}
+EXCLUDE_PRIVATE_FILES = {"notify-command", "notify-webhook", "notify-state.json",
+                         ".last-update-check", ".update.log", ".update.lock"}
 
 
 def copy_filtered(src: Path, dst: Path, extra_exclude_files: set = frozenset()):

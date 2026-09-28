@@ -1,6 +1,7 @@
 """Cloud QQ result semantics without sending real messages."""
 
 import importlib.util
+import io
 import json
 import tempfile
 import sys
@@ -47,10 +48,12 @@ class CloudNotifyTests(unittest.TestCase):
         self.assertIsNone(notify.qq_result(self.config, self.due + timedelta(hours=2)))
 
     def test_optional_skip_is_silent_but_test_requires_adapter(self):
-        with patch.object(notify, "command_path", return_value=None), \
+        with patch.object(notify, "webhook_url", return_value=None), \
+             patch.object(notify, "command_path", return_value=None), \
              patch.object(sys, "argv", ["notify-result.py", "qq"]):
             self.assertEqual(notify.main(), 0)
-        with patch.object(notify, "command_path", return_value=None), \
+        with patch.object(notify, "webhook_url", return_value=None), \
+             patch.object(notify, "command_path", return_value=None), \
              patch.object(sys, "argv", ["notify-result.py", "test"]):
             self.assertEqual(notify.main(), 2)
 
@@ -73,14 +76,35 @@ class CloudNotifyTests(unittest.TestCase):
                 sent.assert_called_once()
                 self.assertEqual(json.loads((root / "state.json").read_text())["qq_notified_day"], "2026-09-29")
 
-    def test_release_prompt_advises_optional_long_connection(self):
+    def test_release_prompt_advises_optional_webhook_and_update(self):
         import sys
         sys.path.insert(0, str(ROOT / "software"))
         from backend.cloud import prompt
         value = prompt()
-        self.assertIn("企业微信长连接机器人", value)
+        self.assertIn("企业微信群机器人 webhook", value)
         self.assertIn("可选项", value)
         self.assertIn("notify-result.py test", value)
+        self.assertIn("check-update.sh", value)
+
+    def test_group_webhook_receives_text_without_logging_key(self):
+        url = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=" + "a" * 36
+        file_stub = SimpleNamespace(exists=lambda: True,
+                                    stat=lambda: SimpleNamespace(st_mode=0o600),
+                                    read_text=lambda **_: url)
+        with patch.object(notify, "WEBHOOK_FILE", file_stub), \
+             patch.object(notify.urllib.request, "urlopen", return_value=io.BytesIO(b'{"errcode":0}')) as opened:
+            self.assertEqual(notify.transport(), ("webhook", url))
+            self.assertTrue(notify.send(("webhook", url), "续火花成功"))
+            request = opened.call_args.args[0]
+            self.assertEqual(json.loads(request.data)["text"]["content"], "续火花成功")
+
+    def test_non_wecom_webhook_is_rejected(self):
+        file_stub = SimpleNamespace(exists=lambda: True,
+                                    stat=lambda: SimpleNamespace(st_mode=0o600),
+                                    read_text=lambda **_: "https://example.com/cgi-bin/webhook/send?key=secret")
+        with patch.object(notify, "WEBHOOK_FILE", file_stub):
+            with self.assertRaises(ValueError):
+                notify.webhook_url()
 
     def test_portable_copy_excludes_private_notification_state(self):
         from scripts.make_portable_zip import copy_filtered
@@ -90,6 +114,7 @@ class CloudNotifyTests(unittest.TestCase):
             source.mkdir()
             (source / "SKILL.md").write_text("public", encoding="utf-8")
             (source / "notify-command").write_text("private", encoding="utf-8")
+            (source / "notify-webhook").write_text("private", encoding="utf-8")
             (source / "notify-state.json").write_text("private", encoding="utf-8")
             copy_filtered(source, target)
             self.assertEqual(sorted(p.name for p in target.iterdir()), ["SKILL.md"])

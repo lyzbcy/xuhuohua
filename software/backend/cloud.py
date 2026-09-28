@@ -18,7 +18,7 @@ def export_bundle() -> dict:
     plugin = PROJECT_ROOT / "napcat-plugin-auto-tasks" / "dist"
     if not (plugin / "index.mjs").is_file():
         plugin = BUNDLE_DIR / "backend" / "assets" / "auto-tasks"
-    if not all(p.is_file() for p in (skill / "SKILL.md", engine / "run.py",
+    if not all(p.is_file() for p in (skill / "SKILL.md", PROJECT_ROOT / "VERSION", engine / "run.py",
                                       plugin / "index.mjs", plugin / "package.json",
                                       plugin / "LICENSE")):
         return {"ok": False, "msg": "云端 Skill、抖音引擎或 QQ 插件缺失，请重新下载完整安装包"}
@@ -33,12 +33,14 @@ def export_bundle() -> dict:
                      "qq-watchdog.sh", "verify-qq.sh", "qq-qr.sh",
                      "prepare-douyin.sh", "start-douyin-desktop.sh",
                      "stop-douyin-desktop.sh", "login-douyin.sh",
-                     "configure-qq.py", "notify-result.py"))
+                     "configure-qq.py", "notify-result.py",
+                     "check-update.sh", "update-skill.py"))
     selected.extend(plugin / name for name in ("index.mjs", "package.json", "LICENSE"))
     selected.extend((plugin / "webui").rglob("*"))
     if not all(source.is_file() for source in selected):
         return {"ok": False, "msg": "云端包所需文件不完整，请重新安装"}
     with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.write(PROJECT_ROOT / "VERSION", "xuhuohua-cloud/VERSION")
         for source in selected:
             if not source.is_file() or source.name.startswith(".env"):
                 continue
@@ -53,22 +55,22 @@ def export_bundle() -> dict:
                                  source.read_bytes().replace(b"\r\n", b"\n"))
             else:
                 archive.write(source, name)
-    return {"ok": True, "path": str(destination), "files": len(selected)}
+    return {"ok": True, "path": str(destination), "files": len(selected) + 1}
 
 
 def prompt() -> str:
     return f"""请在我的 Linux 云服务器上部署续火花。发布源是项目最新 GitHub Release：
 {LATEST_RELEASE_ASSET}
 校验文件：{LATEST_RELEASE_ASSET}.sha256
-同时下载校验文件，验证 SHA-256 后解压到私有目录。只使用这两个 Release 资产；若最新 Release 尚未提供，请告知我，不要改用源码或旧包。读取包内 xuhuohua-cloud/SKILL.md，并按你这个 Agent 的 Skill 安装约定安装该目录；如果本轮无法热加载，先读取 Skill 继续执行。
+同时下载校验文件，验证 SHA-256 后解压到私有目录。只使用这两个 Release 资产；若最新 Release 尚未提供，请告知我，不要改用源码或旧包。若服务器已安装旧版，在任务空闲时把校验后的公共文件更新到原解压目录，保留 QQ/抖音登录态、好友配置及 webhook 私有文件，不另建第二套 cron。读取包内 xuhuohua-cloud/SKILL.md，并按你这个 Agent 的 Skill 安装约定安装该目录；如果本轮无法热加载，先读取 Skill 继续执行。安装后每次使用 Skill 时先运行已安装目录的 check-update.sh：每天北京时间首次使用会在后台静默检查并更新 Skill，失败继续使用旧版，不打断本次工作。
 
-先问我是否开启 QQ 自动续火花、是否开启抖音自动续火花，以及每个启用平台的北京时间 HH:MM。只安装我选的平台，再逐步引导我配置好友和本地话术。部署时请主动建议我配置企业微信长连接机器人，询问是否启用每日结果通知；这是可选项，跳过也要继续部署。
+先问我是否开启 QQ 自动续火花、是否开启抖音自动续火花，以及每个启用平台的北京时间 HH:MM。只安装我选的平台，再逐步引导我配置好友和本地话术。部署时请主动建议我配置企业微信群机器人 webhook 推送链接，询问是否启用每日结果通知；这是可选项，跳过也要继续部署。如果我已给过链接，直接从私有上下文使用，不要再索取或复述。
 
 QQ：启动 NapCat 后运行包内 qq-qr.sh 获取最新二维码 PNG，在当前私聊中直接把图片发给我扫码；不要发送过期码。如果你不能发送图片，引导我通过 SSH 隧道进入仅监听 127.0.0.1 的 WebUI 扫码。确认账号登录后才启用好友任务，核对目标和发送时间。QQ 由插件定时发送，cron 只检查容器，不另建发送任务。
 
 抖音：准备 Playwright 与 Xvfb/x11vnc 虚拟桌面。给我 SSH 隧道和 VNC 连接步骤，让我直接操作可见浏览器扫码，并在可能出现的人脸验证中自行完成。登录态只留在服务器。先做 --dry-run，确认通过后再注册每日无头运行。
 
-企业微信通知：如果我选择启用，先按你这个云端 Agent 官方支持的方式连接企业微信长连接机器人，私下设置接收会话并发一条测试消息。再创建私有可执行适配命令：从标准输入读取一条 UTF-8 文本，通过该长连接通道发送给我，成功退出 0，失败返回非 0。把适配命令的绝对路径单独写入解压目录的 xuhuohua-cloud/notify-command 并 chmod 600，运行 python3 xuhuohua-cloud/scripts/notify-result.py test 验证。QQ 整批结束后和抖音每日运行退出后，无论成功还是失败，都各发送一条结果；通知失败写入日志，不改变续火花本身结果。不要把长连接机器人误写成群 Webhook，也不要在公开文件里存放凭证。如果我暂不配置，保持 notify-command 不存在，QQ/抖音定时任务照常运行。
+企业微信通知：如果我选择启用，把企业微信群机器人 webhook 链接私密保存到解压目录的 xuhuohua-cloud/notify-webhook，权限设为 600，运行 python3 xuhuohua-cloud/scripts/notify-result.py test 确认目标群收到测试消息。QQ 整批结束后和抖音每日运行退出后，无论成功还是失败，都各发送一条结果；通知失败写入日志，不改变续火花本身结果。不要要求长连接机器人，不要在公开文件、命令行参数或日志中暴露 webhook 的 key。如果我暂不配置，保持 notify-webhook 不存在，QQ/抖音定时任务照常运行。
 
 不要在聊天、公开仓库或日志中贴出 Cookie、Token、登录态或好友配置文件。不要在配置与演练阶段真实发送；完成后报告两个平台的启用状态、时间、登录验证、定时任务、企业微信通知是否启用和日志位置。"""
 
