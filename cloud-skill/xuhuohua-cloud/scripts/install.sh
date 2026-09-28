@@ -49,7 +49,12 @@ cat > "$due_runner" <<'DUE'
 set -euo pipefail
 if [[ "$(TZ=Asia/Shanghai date +%H:%M)" != "$1" ]]; then exit 0; fi
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-exec /bin/bash "$here/xuhuohua-cloud/run.sh"
+set +e
+/bin/bash "$here/xuhuohua-cloud/run.sh"
+result=$?
+set -e
+python3 "$here/xuhuohua-cloud/scripts/notify-result.py" douyin --exit-code "$result" || echo "抖音结果通知失败，请检查企业微信长连接机器人" >&2
+exit "$result"
 DUE
 chmod 700 "$due_runner"
 mkdir -p "$here/logs"

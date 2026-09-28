@@ -36,6 +36,7 @@ def check(zip_path: Path) -> None:
             "/cloud-skill/xuhuohua-cloud/scripts/prepare-douyin.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/start-douyin-desktop.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/login-douyin.sh",
+            "/cloud-skill/xuhuohua-cloud/scripts/notify-result.py",
         )
         missing = [suffix for suffix in required if not any(n.endswith(suffix) for n in names)]
         if missing:
@@ -46,7 +47,8 @@ def check(zip_path: Path) -> None:
             parts = [part.lower() for part in name.split("/")]
             basename = parts[-1]
             if (basename.startswith(".env") or basename.startswith("storage-state")
-                    or basename in {"settings.json", "accounts.json"}
+                    or basename in {"settings.json", "accounts.json",
+                                    "notify-command", "notify-state.json"}
                     or "storage_state" in parts or "artifacts" in parts
                     or "qq-data" in parts):
                 forbidden.append(name)

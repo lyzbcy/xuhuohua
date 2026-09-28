@@ -36,7 +36,7 @@
 
 当前正式分发仅支持 Windows x64。macOS 版尚未完成引擎和定时任务适配，不提供下载。
 
-Linux x86_64 云服务器在设置页点击复制时，桌面版实时读取[最新 Release](https://github.com/lyzbcy/xuhuohua/releases/latest)的 `xuhuohua-cloud-prompt.txt`；若资产尚未发布会明确提示。云端 Agent 按 Prompt 下载并校验 `xuhuohua-cloud.zip`，安装其中的 Skill，询问是否开启 QQ、抖音及各自时间。QQ 由 Agent 发送新鲜二维码图片供扫码，必要时使用 SSH 隧道访问 NapCat WebUI；抖音通过 SSH 隧道连接虚拟桌面，由用户自己操作浏览器扫码和人脸验证。登录后先演练，再注册每日任务。离线导出包仍可选，Release 包和本地导出都不包含凭证。详见包内 `xuhuohua-cloud/SKILL.md`。
+Linux x86_64 云服务器在设置页点击复制时，桌面版实时读取[最新 Release](https://github.com/lyzbcy/xuhuohua/releases/latest)的 `xuhuohua-cloud-prompt.txt`；若资产尚未发布会明确提示。云端 Agent 按 Prompt 下载并校验 `xuhuohua-cloud.zip`，安装其中的 Skill，询问是否开启 QQ、抖音及各自时间，并建议可选配置企业微信长连接机器人接收每次任务的成功或失败通知。QQ 由 Agent 发送新鲜二维码图片供扫码，必要时使用 SSH 隧道访问 NapCat WebUI；抖音通过 SSH 隧道连接虚拟桌面，由用户自己操作浏览器扫码和人脸验证。登录后先演练，再注册每日任务。离线导出包仍可选，Release 包和本地导出都不包含凭证。详见包内 `xuhuohua-cloud/SKILL.md`。
 
 ## 从源码运行（新机器）
 

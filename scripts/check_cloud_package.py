@@ -12,6 +12,7 @@ REQUIRED = {
     "xuhuohua-cloud/scripts/install-qq.sh",
     "xuhuohua-cloud/scripts/qq-qr.sh",
     "xuhuohua-cloud/scripts/configure-qq.py",
+    "xuhuohua-cloud/scripts/notify-result.py",
     "xuhuohua-cloud/scripts/prepare-douyin.sh",
     "xuhuohua-cloud/scripts/start-douyin-desktop.sh",
     "xuhuohua-cloud/scripts/login-douyin.sh",
@@ -38,7 +39,8 @@ def check(path: Path) -> None:
             basename = parts[-1]
             if ("qq-data" in parts or "artifacts" in parts or "storage_state" in parts
                     or basename.startswith("storage-state") or basename.startswith(".env")
-                    or basename in {"config.json", "accounts.json", "settings.json"}):
+                    or basename in {"config.json", "accounts.json", "settings.json",
+                                    "notify-command", "notify-state.json"}):
                 raise SystemExit("云端包含私有文件")
             if name.endswith(".sh") and b"\r\n" in archive.read(name):
                 raise SystemExit("Linux shell 脚本含 CRLF: " + name)
@@ -51,7 +53,8 @@ def check(path: Path) -> None:
     deployment_prompt = prompt_file.read_text(encoding="utf-8")
     if ("https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip"
             not in deployment_prompt or "xuhuohua-cloud.zip.sha256" not in deployment_prompt
-            or "是否开启 QQ" not in deployment_prompt or "是否开启抖音" not in deployment_prompt):
+            or "是否开启 QQ" not in deployment_prompt or "是否开启抖音" not in deployment_prompt
+            or "企业微信长连接机器人" not in deployment_prompt):
         raise SystemExit("Release Prompt 缺少下载或引导步骤")
     print(f"CLOUD_PACKAGE_OK files={len(names)} sha256={actual}")
 

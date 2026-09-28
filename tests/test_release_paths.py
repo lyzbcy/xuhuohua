@@ -61,7 +61,7 @@ class ReleasePathTests(unittest.TestCase):
                          "compose.qq.yaml", "qq-watchdog.sh", "verify-qq.sh",
                          "qq-qr.sh", "configure-qq.py", "prepare-douyin.sh",
                          "start-douyin-desktop.sh", "stop-douyin-desktop.sh",
-                         "login-douyin.sh"):
+                         "login-douyin.sh", "notify-result.py"):
                 (skill / "scripts" / name).write_text("test", encoding="utf-8")
             (skill / "scripts" / "qq-qr.sh").write_bytes(b"#!/bin/bash\r\necho ok\r\n")
             private = skill / "qq-data" / "config"

@@ -64,6 +64,10 @@ tag="# xuhuohua-cloud-qq-watchdog"
 entry="*/5 * * * * /bin/bash '$watchdog' >> '$here/logs/qq-watchdog.log' 2>&1 $tag"
 existing="$(crontab -l 2>/dev/null || true)"
 printf '%s\n' "$existing" | sed '/# xuhuohua-cloud-qq-watchdog$/d' | { cat; printf '%s\n' "$entry"; } | crontab -
+notify_tag="# xuhuohua-cloud-qq-result"
+notify_entry="* * * * * $(command -v python3) '$skill/scripts/notify-result.py' qq >> '$here/logs/qq-result.log' 2>&1 $notify_tag"
+existing="$(crontab -l 2>/dev/null || true)"
+printf '%s\n' "$existing" | sed '/# xuhuohua-cloud-qq-result$/d' | { cat; printf '%s\n' "$notify_entry"; } | crontab -
 echo "NapCat 已启动，QQ 插件已部署；cron 每 5 分钟检查容器，不触发发送。"
 echo "WebUI 仅监听服务器 127.0.0.1:6099；请通过 SSH 隧道访问并扫码。"
 echo "确认好友配置和登录后，执行 bash xuhuohua-cloud/scripts/verify-qq.sh。"

@@ -17,6 +17,8 @@ xuhuohua-cloud-prompt.txt
 cloud-skill/**/qq-data/
 cloud-skill/**/desktop-logs/
 cloud-skill/**/.env
+cloud-skill/**/notify-command
+cloud-skill/**/notify-state.json
 tools/napcat/shell/config/
 tools/napcat/shell/cache/
 
