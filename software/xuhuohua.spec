@@ -1,9 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('ui', 'ui'), ('backend/login_gui.py', 'backend'), ('backend/fetch_friends.py', 'backend'), ('../napcat-plugin-auto-tasks/dist', 'backend/assets/auto-tasks')]
+datas = [('ui', 'ui'), ('backend/login_gui.py', 'backend'), ('backend/fetch_friends.py', 'backend'), ('backend/daily_douyin.ps1', 'backend'), ('../napcat-plugin-auto-tasks/dist', 'backend/assets/auto-tasks')]
 binaries = []
-hiddenimports = []
+hiddenimports = ['pystray._win32']
 tmp_ret = collect_all('webview')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('pythonnet')

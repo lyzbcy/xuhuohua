@@ -35,6 +35,9 @@
     <!-- 仪表盘 -->
     <section class="page active" id="page-dashboard">
       <h2>仪表盘</h2>
+      <div class="notice-banner" role="note"><strong>📢 自动续火花须知</strong><br>
+        注册定时任务后，软件到点可以关闭，但电脑须开机联网、保持 Windows 已登录且不休眠。杀毒软件可能拦截任务；控制台与独立自检任务会检查并恢复丢失的计划任务。若程序或脚本被隔离，需在杀毒软件里手动添加信任。
+      </div>
       <div class="cards">
         <div class="card" id="card-douyin">
           <div class="card-title">🎵 抖音</div>
@@ -249,6 +252,13 @@
     <section class="page" id="page-settings">
       <h2>设置</h2>
       <div class="panel">
+        <div class="panel-title">🌐 抖音浏览器模式</div>
+        <div class="form-row"><label for="browser-mode">发送与演练</label>
+          <select id="browser-mode"><option value="headless">无头浏览器（默认）</option><option value="headed">有头浏览器（调试时可见）</option></select></div>
+        <p class="hint">扫码登录仍会打开可见浏览器。这里控制正式发送、演练和每日定时任务；保存后从下一次运行开始生效。</p>
+        <div class="btn-row"><button class="btn primary" id="browser-save">💾 保存浏览器模式</button><span class="hint" id="browser-note"></span></div>
+      </div>
+      <div class="panel">
         <div class="panel-title">📣 企业微信通知（可选）</div>
         <p class="hint">在企微群里添加「群机器人」后，把它的 Webhook 地址粘贴到这里。每天定时发送完成后 / 出错时，会把结果推到群里——人在外面也能知道火花续没续上。</p>
         <div class="form-row"><label>机器人 Webhook</label>
@@ -265,7 +275,15 @@
       </div>
       <div class="panel">
         <div class="panel-title">🔊 每日定时提醒（答疑）</div>
-        <p class="hint">软件<b>不会</b>开机自启；每天到点的发送由 Windows 计划任务独立完成（电脑需开机联网）。QQ 侧发送需要 NapCat 引擎在运行——重启电脑后记得打开软件点一次「启动 QQ」。</p>
+        <p class="hint">注册定时任务后，到点时<b>软件可以关闭，但电脑必须开机联网、保持 Windows 已登录且不休眠</b>。QQ 引擎会在发送前五分钟由计划任务自动启动。</p>
+        <p class="hint">杀毒软件可能拦截或隔离定时任务、程序或脚本。软件启动时会检查并修复丢失的任务；若程序本身被隔离，请在杀毒软件里手动添加信任，然后重新打开软件。</p>
+        <div class="btn-row"><button class="btn" id="sched-repair">🔧 立即检查并修复计划任务</button><span class="hint" id="sched-repair-note"></span></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">☁️ 云服务器 Skill（QQ + 抖音）</div>
+        <p class="hint">复制按钮会读取 GitHub 最新 Release 发布的 Prompt。云端 Agent 按它下载并校验 Skill 包，先询问是否启用 QQ、抖音及各自时间，再引导扫码和配置。QQ 二维码可由 Agent 发图；抖音通过 SSH 隧道连接虚拟桌面，由你亲自扫码或完成人脸验证。也可导出离线包。</p>
+        <div class="btn-row"><button class="btn" id="cloud-export">📦 导出离线包（可选）</button><button class="btn primary" id="cloud-copy">📋 复制云端部署 Prompt</button></div>
+        <p class="hint" id="cloud-note"></p>
       </div>
     </section>
 
@@ -304,6 +322,14 @@
       </div>
     </section>
   </main>
+
+  <div id="spark-pet" role="status" aria-live="polite" style="display:none">
+    <button id="spark-pet-close" aria-label="关闭进度">×</button>
+    <img src="assets/第9弹-萌萌.png" alt="新布丁小宠物">
+    <div class="spark-pet-body"><strong>新布丁正在续火花</strong><span id="spark-pet-text">准备中…</span>
+      <div class="spark-pet-track"><div id="spark-pet-fill"></div></div>
+    </div>
+  </div>
 
   <!-- 底部状态栏 -->
   <footer class="statusbar">

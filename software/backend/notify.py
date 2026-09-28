@@ -12,6 +12,7 @@ from backend.paths import PROJECT_ROOT
 SETTINGS_FILE = PROJECT_ROOT / "config" / "settings.json"
 
 DEFAULTS = {
+    "browser_headless": True,
     "wecom_webhook": "",
     "notify_on_success": True,   # 每日定时发送完成（含成败统计）
     "notify_on_failure": True,   # 失败告警
@@ -33,6 +34,7 @@ def save_settings(patch: dict) -> dict:
     for k in DEFAULTS:
         if k in patch:
             cur[k] = patch[k]
+    cur["browser_headless"] = bool(cur.get("browser_headless", True))
     cur["wecom_webhook"] = str(cur.get("wecom_webhook", "")).strip()
     SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
     SETTINGS_FILE.write_text(json.dumps(cur, ensure_ascii=False, indent=2),

@@ -9,6 +9,14 @@ douyin-auto-fire/artifacts/
 douyin-auto-fire/stickers-lb/
 logs/
 config/message_pool.json
+config/settings.json
+config/schedule.json
+xuhuohua-cloud.zip
+xuhuohua-cloud.zip.sha256
+xuhuohua-cloud-prompt.txt
+cloud-skill/**/qq-data/
+cloud-skill/**/desktop-logs/
+cloud-skill/**/.env
 tools/napcat/shell/config/
 tools/napcat/shell/cache/
 

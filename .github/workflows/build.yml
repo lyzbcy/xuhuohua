@@ -1,6 +1,6 @@
 name: build
-# 打 tag（v*）或手动触发：Windows + macOS 双平台打包，产物自动挂到对应 Release
 
+# 发布已验收的 Windows 便携包与 Linux 云端 Skill 包；macOS 引擎尚未适配。
 on:
   push:
     tags: ["v*"]
@@ -17,75 +17,99 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install deps
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: napcat-plugin-auto-tasks/package-lock.json
+      - name: Build QQ plugin
+        working-directory: napcat-plugin-auto-tasks
         run: |
-          cd software
-          python -m pip install --upgrade pip
-          pip install pywebview pyinstaller
-      - name: Build exe
+          npm ci
+          cd src/webui
+          npm ci
+          cd ../..
+          node ../tests/test_qq_batch.cjs
+          npm run build
+      - name: Check Python and UI syntax
+        shell: pwsh
         run: |
-          cd software
-          pyinstaller --noconfirm --windowed --icon ui/assets/icon.ico --name xuhuohua --add-data "ui;ui" --collect-all webview --collect-all pythonnet --collect-all clr_loader main.py
+          python -m compileall -q software/backend software/main.py
+          node --check software/ui/app.js
+          python -m unittest discover -s tests -v
+      - name: Build and verify cloud Skill release asset
+        shell: pwsh
+        run: |
+          python scripts/make_cloud_zip.py
+          python scripts/check_cloud_package.py xuhuohua-cloud.zip
+      - name: Check Linux deployment scripts
+        shell: bash
+        run: |
+          for file in cloud-skill/xuhuohua-cloud/scripts/*.sh; do bash -n "$file"; done
+      - name: Install app dependencies
+        run: python -m pip install pywebview pystray==0.19.5 pyinstaller
+      - name: Build executable with bundled helpers and QQ plugin
+        working-directory: software
+        run: pyinstaller --noconfirm --clean xuhuohua.spec
       - name: Install WebView2 Runtime
         shell: pwsh
         run: |
           curl -L -o webview2-installer.exe "https://go.microsoft.com/fwlink/p/?LinkId=2124703"
           Start-Process .\webview2-installer.exe -Args "/silent /install" -Wait
-      - name: Smoke test (窗口必须能拉起)
-        shell: pwsh
-        run: |
-          Start-Process "software/dist/xuhuohua/xuhuohua.exe"
-          Start-Sleep -Seconds 15
-          $p = Get-Process xuhuohua -ErrorAction SilentlyContinue
-          if (-not $p -or -not $p.MainWindowTitle) { Write-Error "启动冒烟测试失败：窗口未出现"; exit 1 }
-          Stop-Process -Name xuhuohua -Force
-          Write-Output "SMOKE_OK"
-      - name: Package portable zip
+      - name: Package and verify portable zip
         shell: pwsh
         run: |
           python scripts/make_portable_zip.py
+          python scripts/check_release_package.py xuhuohua-windows-x64.zip
+      - name: Smoke test executable extracted from release zip
+        shell: pwsh
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP "xuhuohua-release-smoke"
+          Expand-Archive xuhuohua-windows-x64.zip -DestinationPath $target
+          $exe = Get-ChildItem $target -Recurse -Filter xuhuohua.exe | Select-Object -First 1
+          if (-not $exe) { throw "发布包中找不到 xuhuohua.exe" }
+          $env:XUHUOHUA_SMOKE = "1"
+          $proc = Start-Process $exe.FullName -PassThru
+          try {
+            for ($i = 0; $i -lt 20; $i++) {
+              Start-Sleep -Seconds 1
+              $proc.Refresh()
+              if ($proc.HasExited) { throw "软件启动后提前退出" }
+              if ($proc.MainWindowHandle) { break }
+            }
+            if (-not $proc.MainWindowHandle) { throw "启动冒烟测试失败：窗口未出现" }
+            $log = Join-Path $exe.DirectoryName ("logs/" + (Get-Date -Format "yyyy-MM-dd") + "-software.log")
+            if (-not (Test-Path $log) -or -not (Select-String -Path $log -Pattern '\[托盘\] 已在右下角托盘运行' -Quiet)) {
+              throw "启动冒烟测试失败：托盘未就绪"
+            }
+          } finally {
+            if (-not $proc.HasExited) { Stop-Process -Id $proc.Id -Force }
+          }
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-smoke-only
+          name: windows-x64
           path: xuhuohua-windows-x64.zip
-
-  macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install deps
-        run: |
-          cd software
-          python -m pip install --upgrade pip
-          pip install pywebview pyinstaller
-      - name: Build app
-        run: |
-          cd software
-          pyinstaller --noconfirm --windowed --name xuhuohua --add-data "ui:ui" --collect-all webview --collect-all pythonnet --collect-all clr_loader main.py
-      - name: Package zip
-        run: |
-          mkdir -p pkg
-          cp -R software/dist/xuhuohua.app pkg/
-          cp VERSION pkg/VERSION
-          ditto -c -k --keepParent pkg xuhuohua-macos.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: macos
-          path: xuhuohua-macos.zip
+          name: cloud-linux-x64
+          path: |
+            xuhuohua-cloud.zip
+            xuhuohua-cloud.zip.sha256
+            xuhuohua-cloud-prompt.txt
 
   release:
-    needs: [windows, macos]   # Windows 正式分发包含 NapCat 等二进制，由维护者本机构建后上传；CI 只做 macos
+    needs: windows
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
-      - name: Attach to release
+      - name: Attach verified release packages
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            xuhuohua-macos.zip
+            xuhuohua-windows-x64.zip
+            xuhuohua-cloud.zip
+            xuhuohua-cloud.zip.sha256
+            xuhuohua-cloud-prompt.txt

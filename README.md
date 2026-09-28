@@ -12,6 +12,8 @@
 
 图文教程见 `docs/部署指南.md`（与软件界面一一对应）。
 
+注册定时任务后，控制台可以关闭到托盘；电脑仍需开机联网、保持 Windows 登录且不休眠。杀毒软件拦截程序或脚本时，先手动添加信任。软件启动及独立自检任务会恢复丢失的计划任务。
+
 ## 软件界面（software/）
 
 | 页面 | 功能 |
@@ -22,6 +24,7 @@
 | 话术库 | QQ 和抖音共用的文字话术与原创表情池 |
 | 定时 | 每日定时任务注册/删除（默认 08:30） |
 | 日志 | 软件日志 + 抖音引擎日志聚合查看 |
+| 设置 | 抖音无头浏览器默认值、有头调试开关、计划任务自检、云端 Skill 导出与 Prompt 复制 |
 | 关于 | 版本/更新日志、检查更新、一键更新、捞鱼工作室 |
 
 ## ⬇️ 下载
@@ -29,13 +32,17 @@
 - **介绍页 / 下载入口**：https://lyzbcy.github.io/xuhuohua/
 - **Releases**：https://github.com/lyzbcy/xuhuohua/releases/latest
   - `xuhuohua-windows-x64.zip`（Windows，解压双击 xuhuohua.exe，放在项目根目录使用）
-  - `xuhuohua-macos.zip`（macOS，右键 App → 打开 以绕过未签名提示）
+  - `xuhuohua-cloud.zip`、`.sha256`、`xuhuohua-cloud-prompt.txt`（Linux 云端 Skill 包、校验文件与桌面复制按钮读取的 Prompt）
+
+当前正式分发仅支持 Windows x64。macOS 版尚未完成引擎和定时任务适配，不提供下载。
+
+Linux x86_64 云服务器在设置页点击复制时，桌面版实时读取[最新 Release](https://github.com/lyzbcy/xuhuohua/releases/latest)的 `xuhuohua-cloud-prompt.txt`；若资产尚未发布会明确提示。云端 Agent 按 Prompt 下载并校验 `xuhuohua-cloud.zip`，安装其中的 Skill，询问是否开启 QQ、抖音及各自时间。QQ 由 Agent 发送新鲜二维码图片供扫码，必要时使用 SSH 隧道访问 NapCat WebUI；抖音通过 SSH 隧道连接虚拟桌面，由用户自己操作浏览器扫码和人脸验证。登录后先演练，再注册每日任务。离线导出包仍可选，Release 包和本地导出都不包含凭证。详见包内 `xuhuohua-cloud/SKILL.md`。
 
 ## 从源码运行（新机器）
 
 1. 克隆本仓库，双击 `启动续火花控制台.bat`（首次会提示缺环境，先做第 2 步）
 2. 环境准备：
-   - Python 3.11+ 后执行：`cd software && python -m venv .venv && .venv\Scripts\python -m pip install pywebview`
+   - Python 3.11+ 后执行：`cd software && python -m venv .venv && .venv\Scripts\python -m pip install pywebview pystray==0.19.5`
    - 抖音引擎：`cd douyin-auto-fire && python -m venv .venv && .venv\Scripts\python -m pip install -r requirements.txt && .venv\Scripts\python -m playwright install chromium`
    - NapCat：从 [NapCatQQ Releases](https://github.com/NapNeko/NapCatQQ/releases) 下载 `NapCat.Shell.zip` 解压到 `tools/napcat/shell/`（本仓库不含该二进制）
 3. 软件里扫码登录抖音和 QQ，即可使用
@@ -44,7 +51,7 @@
 
 | 模块 | 目录 | 说明 |
 |------|------|------|
-| **软件本体** | `software/` | pywebview + HTML 前端控制台（Python 跨平台 Win/Mac） |
+| **软件本体** | `software/` | pywebview + HTML 前端控制台（当前发布 Windows x64） |
 | 抖音引擎 | `douyin-auto-fire/` | 上游 [unmev/douyin-auto-fire](https://github.com/unmev/douyin-auto-fire)，Playwright 驱动 |
 | QQ 引擎 | `tools/napcat/` + `napcat-plugin-auto-tasks/` | NapCat v4.18.19 Shell + 续火花插件（已构建部署） |
 | 备选 | `DouYinSparkFlow/` | 抖音备胎方案 |

@@ -143,11 +143,18 @@ export class TaskManager {
             const targets = config.friendSpark_targets.toLowerCase() === 'all'
                 ? (await getAllFriends()).join(',')
                 : config.friendSpark_targets;
-            this.executeBatch('好友火花', targets, async (id) => {
-                await pluginState.callApi('send_msg', {
+            const result = await this.executeBatch('好友火花', targets, async (id) => {
+                await pluginState.callApiStrict('send_msg', {
                     message_type: 'private', user_id: id, message: config.friendSpark_message,
                 });
             });
+            // 只在整批好友都处理完后落盘；桌面控制台据此收摊，不能在首位好友后退出。
+            if (result.attempted > 0) {
+                pluginState.stats.friendSparkCompletedAt = Date.now();
+                pluginState.stats.friendSparkSucceeded = result.succeeded;
+                pluginState.stats.friendSparkFailed = result.attempted - result.succeeded;
+                pluginState.saveConfig();
+            }
         }
 
         // 自定义任务 (每日定时)
@@ -199,18 +206,21 @@ export class TaskManager {
         }
     }
 
-    private async executeBatch(name: string, targetsStr: string, action: (id: string) => Promise<void>) {
+    private async executeBatch(name: string, targetsStr: string, action: (id: string) => Promise<void>): Promise<{ attempted: number; succeeded: number }> {
         const targets = targetsStr.split(/[,，]/).map(t => t.trim()).filter(t => t);
-        if (targets.length === 0) return;
+        if (targets.length === 0) return { attempted: 0, succeeded: 0 };
         pluginState.logger.info(`[内置任务] ${name} 触发`);
+        let succeeded = 0;
         for (const id of targets) {
             await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
             try {
                 await action(id);
                 pluginState.incrementProcessed();
+                succeeded++;
             } catch (e) {
                 pluginState.logger.error(`[${name}] 失败`, e);
             }
         }
+        return { attempted: targets.length, succeeded };
     }
 }

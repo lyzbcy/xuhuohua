@@ -16,6 +16,48 @@ let dyFriends = [];          // 抖音好友列表（抖音页本地编辑态）
 let dyFetchNames = [];       // 拉取到的候选会话名
 let poolDirty = { texts: [], stickerFiles: [] };
 let poolSnapshot = "";
+let petKind = null;
+let petStarted = 0;
+
+window.showSparkPet = (kind) => {
+  petKind = kind;
+  petStarted = 0;
+  $("#spark-pet").style.display = "flex";
+  $("#spark-pet-text").textContent = kind === "qq" ? "正在准备 QQ 引擎…" : "正在启动无头浏览器…";
+  $("#spark-pet-fill").style.width = "4%";
+};
+window.finishSparkPet = (ok, message) => {
+  $("#spark-pet-text").textContent = message || (ok ? "已完成 ✓" : "运行失败，请看日志");
+  $("#spark-pet-fill").style.width = ok ? "100%" : "6%";
+  petKind = null;
+};
+$("#spark-pet-close").addEventListener("click", () => { $("#spark-pet").style.display = "none"; petKind = null; });
+
+function updateSparkPet(events) {
+  if (!petKind) return;
+  const total = petKind === "qq"
+    ? ((state?.qq?.targets || "").split(",").filter(Boolean).length || 1)
+    : ((state?.douyin?.friends || []).filter(f => !PLACEHOLDER_RE.test(f)).length || 1);
+  for (const event of events) {
+    const message = event.message || "";
+    if (petKind === "douyin" && event.source === "douyin") {
+      if (message.includes("处理好友:")) {
+        petStarted++;
+        $("#spark-pet-text").textContent = `正在处理第 ${Math.min(petStarted, total)}/${total} 位好友`;
+        $("#spark-pet-fill").style.width = `${Math.min(90, 10 + Math.round(petStarted / total * 80))}%`;
+      }
+      if (message.includes("run 完成") || message.includes("run 没有成功"))
+        window.finishSparkPet(event.level === "OK", event.level === "OK" ? "抖音火花已完成 ✓" : "抖音运行失败，请看日志");
+    }
+    if (petKind === "qq" && event.source === "qq") {
+      if (message.includes("立即续火花 →")) {
+        petStarted++;
+        $("#spark-pet-text").textContent = `已处理 ${Math.min(petStarted, total)}/${total} 位好友`;
+        $("#spark-pet-fill").style.width = `${Math.min(95, 10 + Math.round(petStarted / total * 85))}%`;
+      }
+    }
+  }
+}
 
 /* ---------- 基础工具 ---------- */
 function setStatus(text) { $("#statusbar-text").textContent = text; }
@@ -81,6 +123,7 @@ async function pollEvents() {
     if (r.events && r.events.length) {
       lastSeq = r.events[r.events.length - 1].seq;
       renderFeed(r.events);
+      updateSparkPet(r.events);
       const last = r.events[r.events.length - 1];
       setStatus(last.message);
       document.querySelector(".statusbar .dot").style.background =
@@ -204,6 +247,7 @@ setInterval(async () => {
   try {
     const s = await call("setup_env_status");
     const box = $("#setup-progress");
+    $("#dy-login-btn").disabled = !!s.running;
     if (s.running) {
       box.style.display = "";
       box.innerHTML = '<span class="mid">⏳ ' + esc(s.step || "进行中…") + '</span>';
@@ -377,9 +421,12 @@ $("#qq-save").addEventListener("click", (e) => withBtn(e.target, async () => {
     const r = await call("qq_save_config", config);
     if (r.saved) {
       qqSnapshot = qqFormSnapshot();
-      $("#qq-save-note").textContent = r.need_restart
-        ? "已保存 ✓（QQ 正在运行：点上方「停止」再「启动 QQ」生效，不用重新扫码）"
-        : "已保存 ✓";
+      $("#qq-save-note").textContent = r.schedule_ok === false
+        ? "配置已保存，但每日自动启动未注册：" + (r.schedule_msg || "请查看日志")
+        : r.need_restart
+          ? "已保存 ✓（QQ 正在运行：点上方「停止」再「启动 QQ」生效，不用重新扫码）"
+          : "已保存 ✓（已同步每日自动启动）";
+      if (r.schedule_ok === false) alert($("#qq-save-note").textContent);
       setStatus("QQ 配置已保存");
       await loadQqConfig(true);
     } else $("#qq-save-note").textContent = "保存失败";
@@ -473,7 +520,9 @@ async function loadSchedule() {
     const s = await call("schedule_status");
     if (!s.exists) { $("#sched-status").innerHTML = "尚未注册定时任务"; return; }
     const resMap = { "0": "上次运行成功 ✓", "3": "上次运行时还没登录抖音（已跳过）" };
-    $("#sched-status").innerHTML = `已注册 · 下次运行：<b>${esc(s.next_run)}</b> · ${esc(resMap[s.last_result] || ("上次结果：" + (s.last_result || "-")))}`;
+    $("#sched-status").innerHTML = s.needs_repair
+      ? "定时任务仍指向旧安装目录，请点击下方「注册定时任务」修复路径"
+      : `已注册 · 下次运行：<b>${esc(s.next_run)}</b> · ${esc(resMap[s.last_result] || ("上次结果：" + (s.last_result || "-")))}`;
     if (state && state.qq && state.qq.send_time) $("#sched-qq-time").value = normTime(state.qq.send_time, "10:00:00");
   } catch (e) { }
 }
@@ -482,7 +531,9 @@ $("#sched-qq-save").addEventListener("click", (e) => withBtn(e.target, async () 
     const cur = (await call("qq_get_config")).config || {};
     cur.friendSpark_time = normTime($("#sched-qq-time").value, "10:00:00");
     const r = await call("qq_save_config", cur);
-    $("#sched-qq-note").textContent = r.saved ? "已保存 ✓" : "保存失败";
+    $("#sched-qq-note").textContent = r.saved
+      ? (r.schedule_ok === false ? "时间已保存，但 QQ 自动启动注册失败：" + (r.schedule_msg || "请查看日志") : "已保存 ✓，自动启动时间已同步")
+      : "保存失败";
     setStatus("QQ 发送时间已保存为每天 " + cur.friendSpark_time);
   } catch (err) { alert("保存失败：" + err.message); }
 }));
@@ -512,11 +563,47 @@ async function loadNotify() {
   try {
     const r = await call("notify_get");
     const s = r.settings || {};
+    $("#browser-mode").value = s.browser_headless === false ? "headed" : "headless";
     $("#nt-webhook").value = s.wecom_webhook || "";
     $("#nt-on-success").checked = !!s.notify_on_success;
     $("#nt-on-failure").checked = !!s.notify_on_failure;
   } catch (e) { }
 }
+$("#browser-save").addEventListener("click", (e) => withBtn(e.target, async () => {
+  try {
+    await call("notify_set", { browser_headless: $("#browser-mode").value === "headless" });
+    $("#browser-note").textContent = "已保存，下次运行生效 ✓";
+    setStatus("抖音浏览器模式已保存");
+  } catch (err) { alert("保存失败：" + err.message); }
+}));
+$("#sched-repair").addEventListener("click", (e) => withBtn(e.target, async () => {
+  try {
+    const r = await call("schedule_repair");
+    $("#sched-repair-note").textContent = r.ok ? "计划任务已检查，异常项已修复 ✓" : "有任务未能修复，请查看日志并检查杀毒软件";
+    await loadSchedule();
+  } catch (err) { $("#sched-repair-note").textContent = "检查失败：" + err.message; }
+}));
+$("#cloud-export").addEventListener("click", (e) => withBtn(e.target, async () => {
+  try {
+    const r = await call("cloud_skill_export");
+    $("#cloud-note").textContent = r.ok ? "已导出：" + r.path + "（不含登录态和好友配置）" : r.msg;
+  } catch (err) { $("#cloud-note").textContent = "导出失败：" + err.message; }
+}));
+$("#cloud-copy").addEventListener("click", (e) => withBtn(e.target, async () => {
+  try {
+    const r = await call("cloud_skill_prompt");
+    if (!r.ok) throw new Error(r.msg || "最新 Release Prompt 不可用");
+    const value = r.prompt || "";
+    try { await navigator.clipboard.writeText(value); }
+    catch (_) {
+      const box = document.createElement("textarea");
+      box.value = value; document.body.appendChild(box); box.select();
+      if (!document.execCommand("copy")) throw new Error("系统不允许复制，请在浏览器权限中允许剪贴板");
+      box.remove();
+    }
+    $("#cloud-note").textContent = "部署 Prompt 已复制。发给云端 Agent 后，它会从最新 Release 下载并校验云端包。";
+  } catch (err) { $("#cloud-note").textContent = "复制失败：" + err.message; }
+}));
 $("#nt-save").addEventListener("click", (e) => withBtn(e.target, async () => {
   try {
     const r = await call("notify_set", {

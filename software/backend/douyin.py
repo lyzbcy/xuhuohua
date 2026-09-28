@@ -34,25 +34,30 @@ def engine_python() -> str:
 
 
 def _ensure_pth_deps() -> None:
-    """把 douyin-auto-fire/deps 追加进 runtime 的 _pth（幂等，缺失才写）。"""
+    """把引擎源码和依赖都加入隔离运行时的 _pth。"""
     pth = DOUYIN_RUNTIME_PY.parent / "python312._pth"
     if not pth.exists() or not DOUYIN_DEPS.exists():
         return
     try:
         lines = pth.read_text(encoding="utf-8", errors="replace").splitlines()
-        rel = ".." / DOUYIN_DEPS.relative_to(DOUYIN_RUNTIME_PY.parent.parent)
-        rel_win = str(rel).replace("/", chr(92))
-        if any("deps" in ln for ln in lines):
-            return
-        pth.write_text(chr(10).join(lines + [rel_win]) + chr(10), encoding="utf-8")
-        logger.info("[抖音] 已把引擎依赖路径写入 runtime _pth（自动修复）", source="douyin")
-    except OSError:
+        paths = [os.path.relpath(DOUYIN_DIR, DOUYIN_RUNTIME_PY.parent).replace("/", chr(92)),
+                 os.path.relpath(DOUYIN_DEPS, DOUYIN_RUNTIME_PY.parent).replace("/", chr(92))]
+        missing = [path for path in paths if path not in lines]
+        if missing:
+            pth.write_text(chr(10).join(lines + missing) + chr(10), encoding="utf-8")
+            logger.info("[抖音] 已修复嵌入式 Python 的引擎搜索路径", source="douyin")
+    except (OSError, ValueError):
         pass
 
 
 def env_ready() -> bool:
-    """引擎环境就绪 = 有解释器（依赖由引导脚本保证装齐）。"""
-    return bool(engine_python())
+    """安装中的 Python 不能算就绪；等 Playwright 和浏览器组件都落盘。"""
+    if DOUYIN_VENV_PY.exists():
+        return (DOUYIN_VENV_PY.parents[1] / "Lib" / "site-packages" /
+                "playwright" / "__init__.py").is_file()
+    return (DOUYIN_RUNTIME_PY.is_file()
+            and (DOUYIN_DEPS / "playwright" / "__init__.py").is_file()
+            and (DOUYIN_DEPS / ".chromium_done").is_file())
 
 
 def setup_env() -> dict:
@@ -143,8 +148,10 @@ def _engine_env() -> dict:
     env = dict(os.environ)
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    from backend import notify
+    env["HEADLESS"] = "true" if notify.get_settings().get("browser_headless", True) else "false"
     if engine_python() == str(DOUYIN_RUNTIME_PY) and DOUYIN_DEPS.exists():
-        env["PYTHONPATH"] = str(DOUIN_DEPS)
+        env["PYTHONPATH"] = str(DOUYIN_DEPS)
     return env
 
 
@@ -253,7 +260,7 @@ def _pump(key: str, proc: subprocess.Popen) -> None:
 def start_login() -> dict:
     """打开可见浏览器让用户扫码；后台轮询登录 Cookie，成功自动保存凭证。"""
     if not env_ready():
-        return {"started": False, "msg": "运行环境还没装：请先点上面的「一键安装引擎」（约 5-10 分钟，只需一次）"}
+        return {"started": False, "msg": "运行环境尚未初始化完成：请等页面显示「初始化完成」后再扫码登录"}
     if not LOGIN_GUI_SCRIPT.exists():
         return {"started": False, "msg": "登录组件缺失（安装包不完整，请重新下载）"}
     logger.info("[抖音] 打开浏览器等待扫码（5 分钟内有效，登录后自动保存）", source="douyin")

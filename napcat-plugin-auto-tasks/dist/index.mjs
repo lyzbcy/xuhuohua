@@ -131,7 +131,10 @@ class PluginState {
   stats = {
     processed: 0,
     todayProcessed: 0,
-    lastUpdateDay: (/* @__PURE__ */ new Date()).toDateString()
+    lastUpdateDay: (/* @__PURE__ */ new Date()).toDateString(),
+    friendSparkCompletedAt: 0,
+    friendSparkSucceeded: 0,
+    friendSparkFailed: 0
   };
   /** 注册配置变更回调 */
   set onConfigChange(cb) {
@@ -300,6 +303,20 @@ class PluginState {
         return;
       }
       this.logger.error(`[API] ${action} 失败:`, e);
+    }
+  }
+  /** 好友火花发送需要把真实 API 异常交给批次统计。 */
+  async callApiStrict(action, params) {
+    try {
+      return await this.ctx.actions.call(
+        action,
+        params,
+        this.ctx.adapterName,
+        this.ctx.pluginManager.config
+      );
+    } catch (e) {
+      if (String(e).includes("No data returned")) return;
+      throw e;
     }
   }
   // ==================== 统计 ====================
@@ -587,13 +604,19 @@ class TaskManager {
     }
     if (config.friendSpark_enable && timeStr === config.friendSpark_time) {
       const targets = config.friendSpark_targets.toLowerCase() === "all" ? (await getAllFriends()).join(",") : config.friendSpark_targets;
-      this.executeBatch("好友火花", targets, async (id) => {
-        await pluginState.callApi("send_msg", {
+      const result = await this.executeBatch("好友火花", targets, async (id) => {
+        await pluginState.callApiStrict("send_msg", {
           message_type: "private",
           user_id: id,
           message: config.friendSpark_message
         });
       });
+      if (result.attempted > 0) {
+        pluginState.stats.friendSparkCompletedAt = Date.now();
+        pluginState.stats.friendSparkSucceeded = result.succeeded;
+        pluginState.stats.friendSparkFailed = result.attempted - result.succeeded;
+        pluginState.saveConfig();
+      }
     }
     for (let i = 0; i < tasks.length; i++) {
       const task = tasks[i];
@@ -640,17 +663,20 @@ class TaskManager {
   }
   async executeBatch(name, targetsStr, action) {
     const targets = targetsStr.split(/[,，]/).map((t) => t.trim()).filter((t) => t);
-    if (targets.length === 0) return;
+    if (targets.length === 0) return { attempted: 0, succeeded: 0 };
     pluginState.logger.info(`[内置任务] ${name} 触发`);
+    let succeeded = 0;
     for (const id of targets) {
       await new Promise((r) => setTimeout(r, 2e3 + Math.random() * 3e3));
       try {
         await action(id);
         pluginState.incrementProcessed();
+        succeeded++;
       } catch (e) {
         pluginState.logger.error(`[${name}] 失败`, e);
       }
     }
+    return { attempted: targets.length, succeeded };
   }
 }
 

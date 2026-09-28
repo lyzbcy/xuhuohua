@@ -68,16 +68,15 @@ footer a{color:#9aa0b4}
     <div class="badges">
       <span class="badge">💬 <b>0 token</b> 本地话术</span>
       <span class="badge">🐧 QQ + 🎵 抖音</span>
-      <span class="badge">🪟 Windows · 🍎 macOS</span>
+      <span class="badge">🪟 Windows x64</span>
       <span class="badge">🔒 凭证仅存本机</span>
     </div>
   </header>
 
   <div class="dl">
     <a class="btn win" href="https://github.com/lyzbcy/xuhuohua/releases/latest" target="_blank" rel="noopener">🪟 Windows 下载 <small>zip · x64</small></a>
-    <a class="btn mac" href="https://github.com/lyzbcy/xuhuohua/releases/latest" target="_blank" rel="noopener">🍎 macOS 下载 <small>zip · app</small></a>
   </div>
-  <p class="dl-note">两个按钮都指向 <a href="https://github.com/lyzbcy/xuhuohua/releases" target="_blank" rel="noopener">Releases</a> 最新版本 · macOS 首次打开：右键 App → 打开（未签名提示一次即可）</p>
+  <p class="dl-note">前往 <a href="https://github.com/lyzbcy/xuhuohua/releases" target="_blank" rel="noopener">Releases</a> 下载 Windows x64 便携版；macOS 暂未开放。</p>
 
   <div class="features">
     <div class="f"><div class="ic">💬</div><h3>0 token 话术库</h3><p>所有消息来自本地话术库随机抽取：文字 + 原创表情包。不调用任何 AI 接口，不花一分钱，每条结尾自动带上签名。</p></div>
@@ -91,7 +90,7 @@ footer a{color:#9aa0b4}
   <div class="steps">
     <h3>🚀 三步上手</h3>
     <ol>
-      <li>下载解压，双击 <b>xuhuohua.exe</b>（macOS 打开 <b>xuhuohua.app</b>）</li>
+      <li>下载解压，双击 <b>xuhuohua.exe</b></li>
       <li>「抖音」页扫码登录（自动保存）；「QQ」页点启动并扫码（登录过一次后自动快登）</li>
       <li>勾选好友、设置时间 → 完事，每天自动续</li>
     </ol>
@@ -120,10 +119,14 @@ footer a{color:#9aa0b4}
 
 <script>
 window.__FR__ = {
-  version: '2026.09.09-1',
+  version: '2026.09.28-4',
   registry: 'version.json',
   pageId: 'xuhuohua',
   changelog: [
+    '2026-09-28 v0.13.2：云端 Prompt 直连最新 Release，QQ 发图扫码、抖音虚拟桌面登录',
+    '2026-09-28 v0.13.1：云端部署包新增 QQ NapCat Docker 与定时插件',
+    '2026-09-28 v0.13.0：默认无头浏览器、托盘快捷续火、定时自检和云端 Skill 导出',
+    '2026-09-28 下载范围更新：当前正式支持 Windows x64，macOS 适配完成后再开放',
     '2026-09-09 首页上线：Windows / macOS 双平台下载，v0.7.0 起话术自动带「——来自捞鱼自动续火花」签名',
     '2026-09-09 v0.6.x：好友列表勾选、统一定时、补发按钮、弹窗免疫、QQ 快速登录'
   ]

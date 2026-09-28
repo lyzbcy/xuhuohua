@@ -4,6 +4,7 @@ pywebview 窗口 + Python 后端桥接（前端通过 pywebview.api.* 调用）�
 启动：software 下的 .venv/Scripts/python.exe main.py
 """
 import json
+import os
 import socket
 import sys
 from pathlib import Path
@@ -42,13 +43,13 @@ _remove_mark_of_the_web()
 
 import webview  # noqa: E402
 
-from backend import douyin, logger, notify, pool, qq, scheduler, setup_env, updater  # noqa: E402
+from backend import cloud, douyin, logger, notify, pool, qq, scheduler, setup_env, updater  # noqa: E402
 from backend.paths import (DOUYIN_RUNLOG, DOUYIN_STICKERS, FETCH_FRIENDS_SCRIPT,  # noqa: E402
                            LOG_DIR, NAPCAT_DIR, PROJECT_ROOT, UI_DIR,
                            UI_STICKER_DIR)
 
 WINDOW_TITLE = "续火花控制台"
-INSTANCE_PORT = 28099
+INSTANCE_PORT = 0 if os.environ.get("XUHUOHUA_SMOKE") == "1" else 28099
 
 
 class Api:
@@ -132,6 +133,8 @@ class Api:
 
     def douyin_fetch_friends(self):
         """打开无头浏览器抓取抖音最近会话名（约 20-40 秒）。"""
+        if not douyin.env_ready():
+            return {"ok": False, "msg": "运行环境尚未初始化完成，请等安装结束后再拉取会话"}
         if not douyin.logged_in():
             return {"ok": False, "msg": "请先扫码登录抖音"}
         from backend.winproc import run_cmd
@@ -192,6 +195,15 @@ class Api:
     def schedule_status(self):
         return scheduler.status()
 
+    def schedule_repair(self):
+        return scheduler.repair_all()
+
+    def cloud_skill_export(self):
+        return cloud.export_bundle()
+
+    def cloud_skill_prompt(self):
+        return cloud.latest_prompt()
+
     # ---------- 日志 ----------
     def logs_today(self):
         return {"text": logger.today_log_text()}
@@ -231,10 +243,12 @@ class Api:
 
 def _startup_housekeeping():
     """每次打开软件做的例行维护：注册话术轮换任务、清理过期二维码。"""
+    if douyin.env_ready():
+        douyin.engine_python()  # 修复旧便携包隔离运行时缺失的引擎源码路径
     try:
-        scheduler.ensure_rotation()
+        scheduler.repair_all()
     except Exception as exc:
-        logger.warn("[定时] 轮换任务注册异常: {0}".format(exc), source="sched")
+        logger.warn("[定时] 计划任务自检异常: {0}".format(exc), source="sched")
     try:
         qq.cleanup_qr_files()
     except Exception:
@@ -242,6 +256,13 @@ def _startup_housekeeping():
 
 
 def main():
+    if "--repair-schedules" in sys.argv:
+        raise SystemExit(0 if scheduler.repair_all()["ok"] else 1)
+    if "--rotate-qq-message" in sys.argv:
+        from backend import rotate_qq_message
+        raise SystemExit(rotate_qq_message.main())
+    if "--qq-scheduled-run" in sys.argv:
+        raise SystemExit(qq.scheduled_run())
     # 命令行自修复模式：xuhuohua.exe --setup（缺件时直接同步装完）
     if "--setup" in sys.argv:
         logger.info("[初始化] 命令行模式启动（xuhuohua.exe --setup）", source="setup")
@@ -261,11 +282,59 @@ def main():
             pass
         return
     logger.info("软件启动：v{0}".format(updater.get_version()), source="app")
-    _startup_housekeeping()
+    if os.environ.get("XUHUOHUA_SMOKE") != "1":
+        _startup_housekeeping()
     api = Api()
-    webview.create_window(WINDOW_TITLE, str(UI_DIR / "index.html"), js_api=api,
-                          width=1120, height=760, min_size=(900, 620))
-    webview.start()
+    window = webview.create_window(WINDOW_TITLE, str(UI_DIR / "index.html"), js_api=api,
+                                   width=1120, height=760, min_size=(900, 620))
+    tray_state = {"icon": None, "exiting": False}
+
+    def _show_pet(kind):
+        if not window.events.loaded.wait(15):
+            logger.warn("[托盘] 控制台页面尚未就绪", source="app")
+            return False
+        window.show()
+        window.restore()
+        window.evaluate_js("window.showSparkPet({0})".format(json.dumps(kind)))
+        return True
+
+    def _tray_douyin():
+        if not _show_pet("douyin"):
+            return
+        result = douyin.run(False)
+        if not result.get("started"):
+            logger.warn("[托盘] 抖音未启动: " + result.get("msg", "未知原因"), source="app")
+            window.evaluate_js("window.finishSparkPet(false, {0})".format(
+                json.dumps(result.get("msg", "抖音未启动"), ensure_ascii=False)))
+
+    def _tray_qq():
+        if not _show_pet("qq"):
+            return
+        result = qq.send_from_tray()
+        window.evaluate_js("window.finishSparkPet({0}, {1})".format(
+            "true" if result.get("ok") and all(item.get("ok") for item in result.get("results", [])) else "false",
+            json.dumps(result.get("msg", "QQ 任务结束"), ensure_ascii=False)))
+
+    def _tray_quit():
+        tray_state["exiting"] = True
+        window.destroy()
+
+    def _on_closing():
+        if tray_state["icon"] and not tray_state["exiting"]:
+            import threading
+            threading.Thread(target=window.hide, daemon=True).start()
+            logger.info("[托盘] 控制台已缩入托盘，定时任务仍由系统计划任务执行", source="app")
+            return False
+        return True
+
+    window.events.closing += _on_closing
+    from backend import tray
+    tray_state["icon"] = tray.start(window, _tray_douyin, _tray_qq, _tray_quit)
+    try:
+        webview.start()
+    finally:
+        if tray_state["icon"]:
+            tray_state["icon"].stop()
     logger.info("软件退出", source="app")
 
 

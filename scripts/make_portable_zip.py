@@ -14,7 +14,8 @@ OUT = ROOT / "xuhuohua-windows-x64.zip"
 
 EXCLUDE_DIR_NAMES = {".venv", ".venv-ci", "__pycache__", ".pytest_cache",
                      "artifacts", ".git", "build", "dist",
-                     ".idea", ".vscode", "config", "cache", "logs"}
+                     ".idea", ".vscode", "config", "cache", "logs",
+                     "storage_state", "qq-data", "desktop-logs"}
 # 注：node_modules 不排除——NapCat shell 自带的 Node 运行时依赖必须随包
 EXCLUDE_FILE_SUFFIX = (".pyc", ".log", ".tmp")   # 注意：不能排除 .zip——PyInstaller 的 base_library.zip 必须随包
 
@@ -24,7 +25,8 @@ def copy_filtered(src: Path, dst: Path, extra_exclude_files: set = frozenset()):
     for root, dirs, files in os.walk(src):
         dirs[:] = [d for d in dirs if d not in EXCLUDE_DIR_NAMES]
         for f in files:
-            if f.endswith(EXCLUDE_FILE_SUFFIX) or f in extra_exclude_files:
+            if (f.endswith(EXCLUDE_FILE_SUFFIX) or f in extra_exclude_files
+                    or f.startswith(".env") or f.startswith("storage-state")):
                 continue
             s = Path(root) / f
             d = dst / s.relative_to(src)
@@ -46,6 +48,7 @@ def main():
     # 4) 抖音引擎源码（不含凭证/venv/产物）
     n3 = copy_filtered(ROOT / "douyin-auto-fire", PKG / "douyin-auto-fire",
                        extra_exclude_files={"storage-state.json", "config.json", ".env"})
+    copy_filtered(ROOT / "cloud-skill", PKG / "cloud-skill")
     # 5) 说明 / 版本（安装脚本已退役：初始化内置于 exe）
     n2b = 0
     shutil.copy2(ROOT / "使用说明.txt", PKG / "使用说明.txt")

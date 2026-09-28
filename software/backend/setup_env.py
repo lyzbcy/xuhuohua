@@ -85,7 +85,7 @@ def ensure_runtime() -> bool:
 def ensure_deps() -> bool:
     deps = DOUYIN_DIR / "deps"
     req = DOUYIN_DIR / "requirements.txt"
-    if (deps / "playwright").exists():
+    if (deps / "playwright" / "__init__.py").is_file():
         _ensure_pth_deps()
         return True
     _step("2/5 准备 pip…")
@@ -124,9 +124,11 @@ def _ensure_pth_deps():
     if not deps.exists():
         return
     lines = pth.read_text(encoding="utf-8", errors="replace").splitlines()
-    rel = os.path.relpath(deps, DOUYIN_RUNTIME_PY.parent)
-    if not any("deps" in ln for ln in lines):
-        pth.write_text("\n".join(lines + [rel]) + "\n", encoding="utf-8")
+    paths = [os.path.relpath(DOUYIN_DIR, DOUYIN_RUNTIME_PY.parent),
+             os.path.relpath(deps, DOUYIN_RUNTIME_PY.parent)]
+    missing = [path for path in paths if path not in lines]
+    if missing:
+        pth.write_text("\n".join(lines + missing) + "\n", encoding="utf-8")
 
 
 def ensure_chromium() -> bool:
@@ -195,7 +197,7 @@ def status() -> dict:
     missing = []
     if not DOUYIN_RUNTIME_PY.exists():
         missing.append("runtime")
-    if not (DOUYIN_DIR / "deps" / "playwright").exists():
+    if not (DOUYIN_DIR / "deps" / "playwright" / "__init__.py").is_file():
         missing.append("deps")
     if not (DOUYIN_DIR / "deps" / ".chromium_done").exists():
         missing.append("chromium")

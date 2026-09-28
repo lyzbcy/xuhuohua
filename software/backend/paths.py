@@ -21,6 +21,7 @@ else:
 # 引擎辅助脚本（frozen 时从打包资源取，源码时从 backend/ 取）
 LOGIN_GUI_SCRIPT = BUNDLE_DIR / "backend" / "login_gui.py"
 FETCH_FRIENDS_SCRIPT = BUNDLE_DIR / "backend" / "fetch_friends.py"
+BACKEND_SCRIPT_DIR = BUNDLE_DIR / "backend" if FROZEN else SOFTWARE_DIR / "backend"
 
 # frozen：exe 就在项目根；源码：项目根是 software/ 的上一级
 PROJECT_ROOT = SOFTWARE_DIR if FROZEN else SOFTWARE_DIR.parent

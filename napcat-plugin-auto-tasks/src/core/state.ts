@@ -144,6 +144,9 @@ class PluginState {
         processed: 0,
         todayProcessed: 0,
         lastUpdateDay: new Date().toDateString(),
+        friendSparkCompletedAt: 0,
+        friendSparkSucceeded: 0,
+        friendSparkFailed: 0,
     };
 
     /** 注册配置变更回调 */
@@ -336,6 +339,21 @@ class PluginState {
                 return;
             }
             this.logger.error(`[API] ${action} 失败:`, e);
+        }
+    }
+
+    /** 好友火花发送需要把真实 API 异常交给批次统计。 */
+    async callApiStrict(action: string, params: Record<string, unknown>): Promise<unknown> {
+        try {
+            return await this.ctx.actions.call(
+                action as 'send_msg',
+                params as never,
+                this.ctx.adapterName,
+                this.ctx.pluginManager.config
+            );
+        } catch (e: unknown) {
+            if (String(e).includes('No data returned')) return;
+            throw e;
         }
     }
 

@@ -1,0 +1,16 @@
+services:
+  napcat:
+    image: mlikiowa/napcat-docker:v4.18.19
+    container_name: xuhuohua-napcat
+    restart: always
+    environment:
+      NAPCAT_UID: ${NAPCAT_UID}
+      NAPCAT_GID: ${NAPCAT_GID}
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:6099:6099"
+    volumes:
+      - ./qq-data/config:/app/napcat/config
+      - ./qq-data/QQ:/app/.config/QQ
+      - ./qq-data/plugins:/app/napcat/plugins
+      - ./qq-data/cache:/app/napcat/cache

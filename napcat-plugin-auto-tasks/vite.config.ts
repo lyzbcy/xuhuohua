@@ -68,6 +68,7 @@ function copyAssetsPlugin() {
                         console.log('[copy-assets] WebUI 构建完成');
                     } catch (e: any) {
                         console.error('[copy-assets] WebUI 构建失败:', e.stdout?.toString().slice(-300) || e.message);
+                        throw e;
                     }
 
                     // 2. 复制 webui 构建产物
@@ -102,6 +103,8 @@ function copyAssetsPlugin() {
                     );
                     console.log('[copy-assets] 已生成精简 package.json');
                 }
+
+                fs.copyFileSync(resolve(__dirname, 'LICENSE'), resolve(distDir, 'LICENSE'));
 
                 console.log('[copy-assets] 资源复制完成！');
             } catch (error) {
