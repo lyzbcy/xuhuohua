@@ -24,8 +24,8 @@ RESULT = SKILL / "qq-result.json"
 BEIJING = timezone(timedelta(hours=8))
 COMPOSE = SKILL / "scripts/compose.qq.yaml"
 WEBUI_CONFIG = SKILL / "qq-data/config/webui.json"
-SIGNATURE = "——来自楼宇自动续火花"
-OLD_SIGNATURES = ("——来自捞鱼自动续火花",)
+SIGNATURE = "来自捞鱼自动续火花"
+OLD_SIGNATURES = ("——来自楼宇自动续火花", "——来自捞鱼自动续火花")
 
 
 def with_signature(message):

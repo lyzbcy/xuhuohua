@@ -71,7 +71,7 @@ class CloudNotifyTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config_file = root / "config.json"
-            self.config.update(friendSpark_targets="123456", friendSpark_message="早安\n——来自楼宇自动续火花")
+            self.config.update(friendSpark_targets="123456", friendSpark_message="早安\n来自捞鱼自动续火花")
             config_file.write_text(json.dumps(self.config), encoding="utf-8")
             schedule = root / "douyin-schedule.json"
             schedule.write_text(json.dumps({"enabled": True, "time": "08:30"}), encoding="utf-8")
@@ -79,7 +79,7 @@ class CloudNotifyTests(unittest.TestCase):
             douyin.write_text(json.dumps({
                 "finished_at": (self.due + timedelta(seconds=10)).isoformat(),
                 "results": [{"target": "宝宝大人", "status": "success",
-                             "messages": ["早安", "——来自楼宇自动续火花"]}],
+                             "messages": ["早安", "来自捞鱼自动续火花"]}],
             }, ensure_ascii=False), encoding="utf-8")
             qq = root / "qq-result.json"
             with patch.object(notify, "QQ_CONFIG", config_file), \
@@ -95,7 +95,7 @@ class CloudNotifyTests(unittest.TestCase):
                 qq.write_text(json.dumps({
                     "day": "2026-09-29", "session_stopped": True,
                     "recipients": [{"target": "123456", "name": "小周",
-                                    "message": "早安\n——来自楼宇自动续火花",
+                                    "message": "早安\n来自捞鱼自动续火花",
                                     "confirmed": True, "error": None}],
                 }, ensure_ascii=False), encoding="utf-8")
                 self.assertEqual(notify.aggregate(("command", Path("unused")), "qq", now), 0)
@@ -105,7 +105,7 @@ class CloudNotifyTests(unittest.TestCase):
                 self.assertIn("宝宝大人", message)
                 self.assertIn("小周（QQ尾号 3456）", message)
                 self.assertIn("早安", message)
-                self.assertIn("——来自楼宇自动续火花", message)
+                self.assertIn("来自捞鱼自动续火花", message)
                 state = json.loads((root / "state.json").read_text(encoding="utf-8"))
                 self.assertTrue(state["days"]["2026-09-29"]["notified"])
 

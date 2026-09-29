@@ -15,7 +15,7 @@ POOL_FILE = PROJECT_ROOT / "config" / "message_pool.json"
 _lock = threading.Lock()
 
 # 固定结尾：每条发出的话术都会带上（用户规范）
-SIGNATURE = "——来自楼宇自动续火花"
+SIGNATURE = "来自捞鱼自动续火花"
 
 
 def _default_pool() -> dict:

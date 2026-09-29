@@ -111,7 +111,9 @@ def load_task(settings: Settings) -> TaskConfig:
 
 def _with_signature(target: Target, signature: str) -> Target:
     """Append the cloud signature as its own Douyin message exactly once."""
-    messages = list(target.messages)
+    old_signatures = {"——来自楼宇自动续火花", "——来自捞鱼自动续火花"}
+    messages = [message for message in target.messages
+                if not (message.type == "text" and (message.content or "").strip() in old_signatures)]
     if not any(message.type == "text" and (message.content or "").strip() == signature
                for message in messages):
         messages.append(Message(type="text", content=signature))

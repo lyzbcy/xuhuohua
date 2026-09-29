@@ -40,7 +40,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$here/douyin-auto-fire"
 export HEADLESS=true
 export TZ=Asia/Shanghai
-export XUHUOHUA_SIGNATURE='——来自楼宇自动续火花'
+export XUHUOHUA_SIGNATURE='来自捞鱼自动续火花'
 browser_path_file="$here/xuhuohua-cloud/douyin-browser-path"
 if [[ -f "$browser_path_file" ]]; then export BROWSER_PATH="$(cat "$browser_path_file")"; fi
 exec .venv/bin/python run.py

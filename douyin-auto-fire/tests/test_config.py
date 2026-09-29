@@ -104,17 +104,17 @@ def test_loads_simple_config(tmp_path: Path) -> None:
 def test_cloud_signature_is_appended_once(tmp_path: Path, monkeypatch) -> None:
     path = write_config(tmp_path, {"friends": ["好友A"],
                                    "messages": [{"type": "text", "value": "早安"}]})
-    monkeypatch.setenv("XUHUOHUA_SIGNATURE", "——来自楼宇自动续火花")
+    monkeypatch.setenv("XUHUOHUA_SIGNATURE", "来自捞鱼自动续火花")
 
     task = load_task(settings_for(path))
-    assert [item.content for item in task.targets[0].messages] == ["早安", "——来自楼宇自动续火花"]
+    assert [item.content for item in task.targets[0].messages] == ["早安", "来自捞鱼自动续火花"]
 
     path.write_text(json.dumps({"friends": ["好友A"], "messages": [
         {"type": "text", "value": "早安"},
         {"type": "text", "value": "——来自楼宇自动续火花"},
     ]}, ensure_ascii=False), encoding="utf-8")
     task = load_task(settings_for(path))
-    assert [item.content for item in task.targets[0].messages].count("——来自楼宇自动续火花") == 1
+    assert [item.content for item in task.targets[0].messages] == ["早安", "来自捞鱼自动续火花"]
 
 
 def test_loads_target_open_retries_and_timeout(tmp_path: Path) -> None:

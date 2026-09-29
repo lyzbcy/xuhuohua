@@ -63,7 +63,7 @@ class CloudQQRunnerTests(unittest.TestCase):
                     message_id = 101 if payload["user_id"] == 123456 else 102
                     return {"messages": [{"message_id": message_id,
                                            "sender": {"user_id": 345678},
-                                           "raw_message": "早安\n——来自楼宇自动续火花"}]}
+                                           "raw_message": "早安\n来自捞鱼自动续火花"}]}
                 raise AssertionError(action)
 
             with patch.object(runner, "SKILL", skill), patch.object(runner, "QQ_CONFIG", config), \
@@ -87,7 +87,7 @@ class CloudQQRunnerTests(unittest.TestCase):
             detail = json.loads((skill / "result.json").read_text(encoding="utf-8"))
             self.assertEqual([x["name"] for x in detail["recipients"]], ["甲", "乙"])
             self.assertTrue(all(x["confirmed"] for x in detail["recipients"]))
-            self.assertIn("——来自楼宇自动续火花", detail["recipients"][0]["message"])
+            self.assertIn("来自捞鱼自动续火花", detail["recipients"][0]["message"])
 
     def test_dry_run_does_not_send_or_write(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -150,9 +150,9 @@ class CloudQQRunnerTests(unittest.TestCase):
 
     def test_matching_history_is_confirmed(self):
         history = {"messages": [{"message_id": 88, "sender": {"user_id": 345678},
-                                  "raw_message": "早安\n——来自楼宇自动续火花"}]}
+                                  "raw_message": "早安\n来自捞鱼自动续火花"}]}
         self.assertTrue(runner.history_confirms(history, 88, "345678",
-                                                "早安\n——来自楼宇自动续火花"))
+                                                "早安\n来自捞鱼自动续火花"))
 
     def test_wait_for_login_triggers_real_quick_login_action(self):
         with patch.object(runner, "endpoint", return_value=("http://local", "secret")), \

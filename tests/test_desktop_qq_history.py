@@ -15,12 +15,12 @@ class DesktopQQHistoryTests(unittest.TestCase):
         response = {"data": {"messages": [{
             "message_id": 91,
             "sender": {"user_id": 345678},
-            "raw_message": "早安\n——来自楼宇自动续火花",
+            "raw_message": "早安\n来自捞鱼自动续火花",
         }]}}
         with patch.object(qq, "_onebot_call", return_value=response):
             self.assertTrue(qq._confirm_private_message(
                 6098, "token", "123456", 91, "345678",
-                "早安\n——来自楼宇自动续火花"))
+                "早安\n来自捞鱼自动续火花"))
 
     def test_mismatched_body_never_becomes_success(self):
         response = {"data": {"messages": [{
