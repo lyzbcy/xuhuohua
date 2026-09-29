@@ -18,4 +18,12 @@ PY
 if [[ "$(docker inspect -f '{{.State.Running}}' xuhuohua-napcat 2>/dev/null || true)" != "true" ]]; then
   echo "NapCat 容器未运行" >&2; exit 1
 fi
-echo "请在 NapCat WebUI 核对 QQ 已登录、插件已加载；此检查不会发消息。"
+mounted="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/app/.config/QQ"}}{{.Source}}{{end}}{{end}}' xuhuohua-napcat)"
+expected="$(realpath "$skill/qq-data/QQ")"
+if [[ -z "$mounted" || "$(realpath "$mounted")" != "$expected" ]]; then
+  echo "QQ 登录态没有挂载到持久化目录 $expected；停止配置并检查 Compose" >&2; exit 1
+fi
+if [[ -z "$(find "$expected" -type f -print -quit)" ]]; then
+  echo "QQ 持久化目录尚无登录数据；扫码后等待数据落盘，再重启验证" >&2; exit 1
+fi
+echo "QQ 持久化挂载及文件存在。此脚本无法证明账号已登录；必须在 WebUI 确认登录，重启容器后再次确认仍已登录，才可报告部署成功。此检查不会发消息。"

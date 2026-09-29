@@ -29,15 +29,15 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 ## 3. QQ 登录与定时
 
 1. 检查 Docker Engine、Compose v2、Python 3 和 crontab。运行 `bash xuhuohua-cloud/scripts/install-qq.sh`。它部署固定版本 `mlikiowa/napcat-docker:v4.18.19` 和本项目插件。首次好友任务处于关闭状态；已有配置不会被覆盖。容器路径以 [NapCat Docker 官方文档](https://github.com/NapNeko/NapCat-Docker) 为准。
-2. 运行 `bash xuhuohua-cloud/scripts/qq-qr.sh`。脚本只返回最近 3 分钟生成的 PNG 绝对路径。用 Agent 的图片发送能力在**与用户的私聊**中把该图片发给用户扫码，不要发送 base64 或日志里的 Token；二维码过期就通过 WebUI 刷新再取。若 Agent 无法发送图片，引导用户在自己电脑上建立 `ssh -L 6099:127.0.0.1:6099 用户@服务器`，打开 `http://127.0.0.1:6099/webui` 扫码。WebUI 只绑定服务器本机，不开放公网。
-3. 在 WebUI 确认 QQ 已登录。询问目标 QQ 号和一条本地话术后，运行 `python3 xuhuohua-cloud/scripts/configure-qq.py --time HH:MM --targets QQ号1,QQ号2 --message '话术'`；脚本不会立即发送。然后运行 `docker compose -f xuhuohua-cloud/scripts/compose.qq.yaml --project-directory xuhuohua-cloud restart` 加载配置，再运行 `bash xuhuohua-cloud/scripts/verify-qq.sh`。
+2. 默认运行 `bash xuhuohua-cloud/scripts/qq-login-page.sh start`，给用户 `ssh -L 6100:127.0.0.1:6100 用户@服务器` 和浏览器链接 `http://127.0.0.1:6100/`。这是只监听服务器本机、每 2 秒读取最新二维码的页面；过期会提示在 WebUI 刷新，**不要反复发送静态二维码截图**。需要管理 NapCat 时另建 `ssh -L 6099:127.0.0.1:6099 用户@服务器`，打开 `http://127.0.0.1:6099/webui`。两个端口都不能公开到公网；不要把 WebUI Token 发给他人。
+3. 用户扫码并在手机上授权后，先在 WebUI 确认账号已登录，运行 `bash xuhuohua-cloud/scripts/verify-qq.sh` 检查 `/app/.config/QQ` 是否挂载到原有 `qq-data/QQ` 且已落盘。询问目标 QQ 号和一条本地话术，运行 `python3 xuhuohua-cloud/scripts/configure-qq.py --time HH:MM --targets QQ号1,QQ号2 --message '话术'`；脚本不会立即发送。**重启容器后再次在 WebUI 确认同一账号仍已登录**，再运行 `verify-qq.sh`；仅容器运行和配置有效不等于已登录。若重新要求扫码，先检查挂载目录、属主/权限和 QQ 风控或异地登录，解决并重做重启验证，不要宣称成功。验证完成后运行 `bash xuhuohua-cloud/scripts/qq-login-page.sh stop` 关闭临时页面。
 4. QQ 由插件内置定时器按北京时间每日执行；cron 每 5 分钟只负责拉起停止的容器，另有每分钟一次的只读结果检查。不要再注册直接发 QQ 消息的 cron，避免重复。QQ 掉线时需要用户重新扫码；若错过时间，不自动补发。结果检查在整批完成后通知；超过计划时间 60 分钟仍无完成标记，则报告失败，每个北京时间日期最多报告一次。
 
 ## 4. 抖音虚拟桌面登录与定时
 
-1. 运行 `bash xuhuohua-cloud/scripts/prepare-douyin.sh` 安装 Python 依赖和 Chromium。若浏览器缺少系统库，按 Playwright 诊断安装依赖。虚拟桌面需 `Xvfb`、`x11vnc`，建议有 `fluxbox`；在 Debian/Ubuntu 可安装 `xvfb x11vnc fluxbox`。
-2. 运行 `bash xuhuohua-cloud/scripts/start-douyin-desktop.sh`。VNC 仅监听服务器 `127.0.0.1:5901`；让用户在自己电脑建立 `ssh -L 5901:127.0.0.1:5901 用户@服务器`，用 VNC 客户端连接 `127.0.0.1:5901`。VNC 不设单独密码，必须先建立 SSH 隧道；不要把 VNC 端口暴露到公网。
-3. 在持续运行的终端执行 `bash xuhuohua-cloud/scripts/login-douyin.sh`。用户亲自操作可见浏览器完成扫码、可能出现的人脸验证；确认浏览器显示已登录后，Agent 才给登录脚本输入 Enter。脚本将登录态保存为服务器私有的 `douyin-auto-fire/storage-state.json`。结束后运行 `bash xuhuohua-cloud/scripts/stop-douyin-desktop.sh`。
+1. 运行 `bash xuhuohua-cloud/scripts/prepare-douyin.sh` 安装 Python 依赖和 Chromium。若浏览器缺少系统库，按 Playwright 诊断安装依赖。虚拟桌面需 `Xvfb`、`x11vnc`、`novnc`、`websockify`，建议有 `fluxbox`；在 Debian/Ubuntu 可安装 `xvfb x11vnc novnc websockify fluxbox`。
+2. 运行 `bash xuhuohua-cloud/scripts/start-douyin-desktop.sh`，随即在持续运行的终端执行 `bash xuhuohua-cloud/scripts/login-douyin.sh`，等待浏览器进入登录页。**默认提供 noVNC 网页链接**：让用户在自己电脑建立 `ssh -L 6080:127.0.0.1:6080 用户@服务器`，在浏览器打开 `http://127.0.0.1:6080/vnc_lite.html?autoconnect=true`。noVNC 与 VNC 仅监听服务器本机，必须经 SSH 隧道；不要公开无密码桌面，也不要默认要求用户安装 VNC 客户端。
+3. 用户亲自操作 noVNC 中的浏览器完成扫码、可能出现的人脸验证。**等用户明确确认登录结束**且浏览器显示已登录后，Agent 才给登录脚本输入 Enter；脚本将登录态保存为服务器私有的 `douyin-auto-fire/storage-state.json`。确认文件存在且权限为 600 后，立即运行 `bash xuhuohua-cloud/scripts/stop-douyin-desktop.sh`，关闭 noVNC、VNC 和本次启动的虚拟桌面。若登录失败，也关闭临时桌面并报告原因。
 4. 询问好友昵称和本地文字话术，基于 `douyin-auto-fire/config.example.json` 创建私有 `config.json`，先用 1 位好友和 1 条文字消息，开启防重复，并保持文件权限为 600。执行 `cd douyin-auto-fire && .venv/bin/python run.py --dry-run` 验证登录态和目标。通过后运行 `bash xuhuohua-cloud/scripts/install.sh HH:MM` 注册北京时间每日 cron；正式运行默认无头。
 
 ## 5. 可选的企业微信群机器人结果通知

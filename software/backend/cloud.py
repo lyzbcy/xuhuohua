@@ -31,6 +31,7 @@ def export_bundle() -> dict:
     selected.extend(skill / "scripts" / name for name in
                     ("install.sh", "install-qq.sh", "install-skill.sh", "compose.qq.yaml",
                      "qq-watchdog.sh", "verify-qq.sh", "qq-qr.sh",
+                     "qq-login-page.sh", "qq-login-page.py",
                      "prepare-douyin.sh", "start-douyin-desktop.sh",
                      "stop-douyin-desktop.sh", "login-douyin.sh",
                      "configure-qq.py", "notify-result.py",
@@ -66,9 +67,9 @@ def prompt() -> str:
 
 先问我是否开启 QQ 自动续火花、是否开启抖音自动续火花，以及每个启用平台的北京时间 HH:MM。只安装我选的平台，再逐步引导我配置好友和本地话术。部署时请主动建议我配置企业微信群机器人 webhook 推送链接，询问是否启用每日结果通知；这是可选项，跳过也要继续部署。如果我已给过链接，直接从私有上下文使用，不要再索取或复述。
 
-QQ：启动 NapCat 后运行包内 qq-qr.sh 获取最新二维码 PNG，在当前私聊中直接把图片发给我扫码；不要发送过期码。如果你不能发送图片，引导我通过 SSH 隧道进入仅监听 127.0.0.1 的 WebUI 扫码。确认账号登录后才启用好友任务，核对目标和发送时间。QQ 由插件定时发送，cron 只检查容器，不另建发送任务。
+QQ：启动 NapCat 后运行 qq-login-page.sh start，默认给我可在浏览器打开的 QQ 实时二维码页面链接及 SSH 隧道命令；页面自动读取新二维码，不要反复发静态截图，也不要公开暴露端口。扫码授权后，检查 qq-data/QQ 持久化目录和 Docker 挂载，重启容器，再在 NapCat WebUI 确认同一账号仍已登录；若重启后要求重新扫码，先排查数据卷或账号风控，不能声称部署成功。确认后关闭临时 QQ 页面、启用好友任务并核对目标和发送时间。QQ 由插件定时发送，cron 只检查容器，不另建发送任务。
 
-抖音：准备 Playwright 与 Xvfb/x11vnc 虚拟桌面。给我 SSH 隧道和 VNC 连接步骤，让我直接操作可见浏览器扫码，并在可能出现的人脸验证中自行完成。登录态只留在服务器。先做 --dry-run，确认通过后再注册每日无头运行。
+抖音：准备 Playwright 与 Xvfb/x11vnc/noVNC 虚拟桌面。默认给我浏览器可打开的 noVNC 链接和 SSH 隧道命令，让我直接操作可见浏览器扫码，并在可能出现的人脸验证中自行完成；不要默认要求安装 VNC 客户端。等我明确确认登录结束后，保存服务器私有登录态，运行 stop-douyin-desktop.sh 关闭 noVNC、VNC 和本次虚拟桌面，再做 --dry-run，确认通过后注册每日无头运行。noVNC 只监听本机，不公开暴露无密码桌面。
 
 企业微信通知：如果我选择启用，把企业微信群机器人 webhook 链接私密保存到解压目录的 xuhuohua-cloud/notify-webhook，权限设为 600，运行 python3 xuhuohua-cloud/scripts/notify-result.py test 确认目标群收到测试消息。QQ 整批结束后和抖音每日运行退出后，无论成功还是失败，都各发送一条结果；通知失败写入日志，不改变续火花本身结果。不要要求长连接机器人，不要在公开文件、命令行参数或日志中暴露 webhook 的 key。如果我暂不配置，保持 notify-webhook 不存在，QQ/抖音定时任务照常运行。
 

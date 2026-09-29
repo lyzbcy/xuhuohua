@@ -35,6 +35,8 @@ def check(zip_path: Path) -> None:
             "/cloud-skill/xuhuohua-cloud/scripts/qq-watchdog.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/verify-qq.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/qq-qr.sh",
+            "/cloud-skill/xuhuohua-cloud/scripts/qq-login-page.sh",
+            "/cloud-skill/xuhuohua-cloud/scripts/qq-login-page.py",
             "/cloud-skill/xuhuohua-cloud/scripts/prepare-douyin.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/start-douyin-desktop.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/login-douyin.sh",
@@ -51,7 +53,8 @@ def check(zip_path: Path) -> None:
             if (basename.startswith(".env") or basename.startswith("storage-state")
                     or basename in {"settings.json", "accounts.json",
                                     "notify-command", "notify-webhook", "notify-state.json",
-                                    ".last-update-check", ".update.log", ".update.lock"}
+                                    ".last-update-check", ".update.log", ".update.lock",
+                                    "qq-login-page.pid"}
                     or "storage_state" in parts or "artifacts" in parts
                     or "qq-data" in parts):
                 forbidden.append(name)

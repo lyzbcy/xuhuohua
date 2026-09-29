@@ -54,13 +54,14 @@ class ReleasePathTests(unittest.TestCase):
     def test_cloud_export_excludes_local_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "VERSION").write_text("0.13.5\n", encoding="ascii")
+            (root / "VERSION").write_text("0.13.6\n", encoding="ascii")
             skill = root / "cloud-skill" / "xuhuohua-cloud"
             (skill / "scripts").mkdir(parents=True)
             (skill / "SKILL.md").write_text("skill", encoding="utf-8")
             for name in ("install.sh", "install-qq.sh", "install-skill.sh",
                          "compose.qq.yaml", "qq-watchdog.sh", "verify-qq.sh",
-                         "qq-qr.sh", "configure-qq.py", "prepare-douyin.sh",
+                         "qq-qr.sh", "qq-login-page.sh", "qq-login-page.py",
+                         "configure-qq.py", "prepare-douyin.sh",
                          "start-douyin-desktop.sh", "stop-douyin-desktop.sh",
                          "login-douyin.sh", "notify-result.py",
                          "check-update.sh", "update-skill.py"):
@@ -93,7 +94,8 @@ class ReleasePathTests(unittest.TestCase):
                 self.assertIn("qq-plugin/LICENSE", archive.namelist())
                 self.assertIn("qq-plugin/webui/index.html", archive.namelist())
                 self.assertIn("xuhuohua-cloud/scripts/install-qq.sh", archive.namelist())
-                self.assertEqual(archive.read("xuhuohua-cloud/VERSION").strip(), b"0.13.5")
+                self.assertEqual(archive.read("xuhuohua-cloud/VERSION").strip(), b"0.13.6")
+                self.assertIn("xuhuohua-cloud/scripts/qq-login-page.py", archive.namelist())
                 self.assertIn("douyin-auto-fire/scripts/login.py", archive.namelist())
                 self.assertEqual(archive.read("xuhuohua-cloud/scripts/qq-qr.sh"), b"#!/bin/bash\necho ok\n")
                 self.assertFalse(any("storage-state" in n or n.endswith("config.json")
@@ -107,7 +109,9 @@ class ReleasePathTests(unittest.TestCase):
         self.assertIn("xuhuohua-cloud.zip.sha256", value)
         self.assertIn("是否开启 QQ", value)
         self.assertIn("是否开启抖音", value)
-        self.assertIn("qq-qr.sh", value)
+        self.assertIn("qq-login-page.sh", value)
+        self.assertIn("noVNC", value)
+        self.assertIn("stop-douyin-desktop.sh", value)
         self.assertIn("虚拟桌面", value)
 
     def test_copy_prompt_reads_latest_release_asset_and_rejects_old_asset(self):

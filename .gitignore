@@ -23,6 +23,8 @@ cloud-skill/**/notify-state.json
 cloud-skill/**/.last-update-check
 cloud-skill/**/.update.log
 cloud-skill/**/.update.lock
+cloud-skill/**/qq-login-page.pid
+cloud-skill/**/qq-login-page.log
 tools/napcat/shell/config/
 tools/napcat/shell/cache/
 
