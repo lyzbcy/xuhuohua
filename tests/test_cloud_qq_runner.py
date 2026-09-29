@@ -59,7 +59,8 @@ class CloudQQRunnerTests(unittest.TestCase):
                  patch.object(runner, "STATE", skill / "state.json"), \
                  patch.object(runner, "fcntl", SimpleNamespace(flock=lambda *_: None, LOCK_EX=1)), \
                  patch.object(runner, "endpoint", return_value=("http://local", "secret")), \
-                 patch.object(runner, "check_login"), patch.object(runner, "onebot", side_effect=fake_onebot):
+                 patch.object(runner, "check_login"), patch.object(runner, "onebot", side_effect=fake_onebot), \
+                 patch("builtins.print"):
                 self.assertEqual(runner.run_due(now), "ok")
                 self.assertEqual(runner.run_due(now), "already-ran")
             self.assertEqual(calls, ["send_private_msg", "send_private_msg"])
