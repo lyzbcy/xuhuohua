@@ -54,7 +54,7 @@ class ReleasePathTests(unittest.TestCase):
     def test_cloud_export_excludes_local_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "VERSION").write_text("0.13.6\n", encoding="ascii")
+            (root / "VERSION").write_text("0.13.7\n", encoding="ascii")
             skill = root / "cloud-skill" / "xuhuohua-cloud"
             (skill / "scripts").mkdir(parents=True)
             (skill / "SKILL.md").write_text("skill", encoding="utf-8")
@@ -94,7 +94,7 @@ class ReleasePathTests(unittest.TestCase):
                 self.assertIn("qq-plugin/LICENSE", archive.namelist())
                 self.assertIn("qq-plugin/webui/index.html", archive.namelist())
                 self.assertIn("xuhuohua-cloud/scripts/install-qq.sh", archive.namelist())
-                self.assertEqual(archive.read("xuhuohua-cloud/VERSION").strip(), b"0.13.6")
+                self.assertEqual(archive.read("xuhuohua-cloud/VERSION").strip(), b"0.13.7")
                 self.assertIn("xuhuohua-cloud/scripts/qq-login-page.py", archive.namelist())
                 self.assertIn("douyin-auto-fire/scripts/login.py", archive.namelist())
                 self.assertEqual(archive.read("xuhuohua-cloud/scripts/qq-qr.sh"), b"#!/bin/bash\necho ok\n")

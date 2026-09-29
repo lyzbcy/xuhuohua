@@ -69,7 +69,7 @@ def prompt() -> str:
 
 QQ：启动 NapCat 后运行 qq-login-page.sh start，默认给我可在浏览器打开的 QQ 实时二维码页面链接及 SSH 隧道命令；页面自动读取新二维码，不要反复发静态截图，也不要公开暴露端口。扫码授权后，检查 qq-data/QQ 持久化目录和 Docker 挂载，重启容器，再在 NapCat WebUI 确认同一账号仍已登录；若重启后要求重新扫码，先排查数据卷或账号风控，不能声称部署成功。确认后关闭临时 QQ 页面、启用好友任务并核对目标和发送时间。QQ 由插件定时发送，cron 只检查容器，不另建发送任务。
 
-抖音：准备 Playwright 与 Xvfb/x11vnc/noVNC 虚拟桌面。默认给我浏览器可打开的 noVNC 链接和 SSH 隧道命令，让我直接操作可见浏览器扫码，并在可能出现的人脸验证中自行完成；不要默认要求安装 VNC 客户端。等我明确确认登录结束后，保存服务器私有登录态，运行 stop-douyin-desktop.sh 关闭 noVNC、VNC 和本次虚拟桌面，再做 --dry-run，确认通过后注册每日无头运行。noVNC 只监听本机，不公开暴露无密码桌面。
+抖音：准备 Playwright 与 Xvfb/x11vnc/noVNC 虚拟桌面。默认给我浏览器可打开的 noVNC 链接和 SSH 隧道命令，使用仅监听服务器本机的 6089 端口；先检查现有 nginx /vnc/ 是否把旧 6080 端口公开反代，不能沿用无密码的公网链接。让我直接操作可见浏览器扫码，并在可能出现的人脸验证中自行完成；不要默认要求安装 VNC 客户端。等我明确确认登录结束后，保存服务器私有登录态，运行 stop-douyin-desktop.sh 关闭 noVNC、VNC 和本次虚拟桌面，再做 --dry-run，确认通过后注册每日无头运行。
 
 企业微信通知：如果我选择启用，把企业微信群机器人 webhook 链接私密保存到解压目录的 xuhuohua-cloud/notify-webhook，权限设为 600，运行 python3 xuhuohua-cloud/scripts/notify-result.py test 确认目标群收到测试消息。QQ 整批结束后和抖音每日运行退出后，无论成功还是失败，都各发送一条结果；通知失败写入日志，不改变续火花本身结果。不要要求长连接机器人，不要在公开文件、命令行参数或日志中暴露 webhook 的 key。如果我暂不配置，保持 notify-webhook 不存在，QQ/抖音定时任务照常运行。
 

@@ -8,7 +8,7 @@ for name in novnc x11vnc fluxbox xvfb; do
     if [[ "$pid" =~ ^[0-9]+$ ]] && [[ -r "/proc/$pid/cmdline" ]]; then
       command_line="$(tr '\0' ' ' < "/proc/$pid/cmdline")"
       case "$name" in
-        novnc) pattern='*websockify*127.0.0.1:6080*' ;;
+        novnc) pattern='*websockify*127.0.0.1:6089*' ;;
         x11vnc) pattern='*x11vnc*-display :99*-rfbport 5901*' ;;
         fluxbox) pattern='*fluxbox*-display :99*' ;;
         xvfb) pattern='*Xvfb :99 *' ;;

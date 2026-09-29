@@ -36,7 +36,7 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 ## 4. 抖音虚拟桌面登录与定时
 
 1. 运行 `bash xuhuohua-cloud/scripts/prepare-douyin.sh` 安装 Python 依赖和 Chromium。若浏览器缺少系统库，按 Playwright 诊断安装依赖。虚拟桌面需 `Xvfb`、`x11vnc`、`novnc`、`websockify`，建议有 `fluxbox`；在 Debian/Ubuntu 可安装 `xvfb x11vnc novnc websockify fluxbox`。
-2. 运行 `bash xuhuohua-cloud/scripts/start-douyin-desktop.sh`，随即在持续运行的终端执行 `bash xuhuohua-cloud/scripts/login-douyin.sh`，等待浏览器进入登录页。**默认提供 noVNC 网页链接**：让用户在自己电脑建立 `ssh -L 6080:127.0.0.1:6080 用户@服务器`，在浏览器打开 `http://127.0.0.1:6080/vnc_lite.html?autoconnect=true`。noVNC 与 VNC 仅监听服务器本机，必须经 SSH 隧道；不要公开无密码桌面，也不要默认要求用户安装 VNC 客户端。
+2. 运行 `bash xuhuohua-cloud/scripts/start-douyin-desktop.sh`，随即在持续运行的终端执行 `bash xuhuohua-cloud/scripts/login-douyin.sh`，等待浏览器进入登录页。**默认提供 noVNC 网页链接**：让用户在自己电脑建立 `ssh -L 6089:127.0.0.1:6089 用户@服务器`，在浏览器打开 `http://127.0.0.1:6089/vnc_lite.html?autoconnect=true`。6089 刻意避开可能已由 nginx `/vnc/` 公开反代的 6080；上线前仍应核对本机反代配置。noVNC 与 VNC 仅监听服务器本机，必须经 SSH 隧道；不要公开无密码桌面，也不要默认要求用户安装 VNC 客户端。
 3. 用户亲自操作 noVNC 中的浏览器完成扫码、可能出现的人脸验证。**等用户明确确认登录结束**且浏览器显示已登录后，Agent 才给登录脚本输入 Enter；脚本将登录态保存为服务器私有的 `douyin-auto-fire/storage-state.json`。确认文件存在且权限为 600 后，立即运行 `bash xuhuohua-cloud/scripts/stop-douyin-desktop.sh`，关闭 noVNC、VNC 和本次启动的虚拟桌面。若登录失败，也关闭临时桌面并报告原因。
 4. 询问好友昵称和本地文字话术，基于 `douyin-auto-fire/config.example.json` 创建私有 `config.json`，先用 1 位好友和 1 条文字消息，开启防重复，并保持文件权限为 600。执行 `cd douyin-auto-fire && .venv/bin/python run.py --dry-run` 验证登录态和目标。通过后运行 `bash xuhuohua-cloud/scripts/install.sh HH:MM` 注册北京时间每日 cron；正式运行默认无头。
 
