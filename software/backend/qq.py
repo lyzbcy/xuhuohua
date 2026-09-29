@@ -213,7 +213,7 @@ def _kill_frontend_qq(wait_seconds: int = 10) -> bool:
 def _webui_quick_login(account: str) -> bool:
     """WebUI 快速登录兜底（2026-09-17 实测调用链）：
     POST /api/auth/login {"hash": sha256(webui_token + ".napcat")} 换 Credential，
-    再 POST /api/QQLogin/SetQuickLoginQQ {"uin": <int>} 触发快登。
+    再 POST /api/QQLogin/SetQuickLogin {"uin": <int>} 触发快登。
     用于 -q 快登偶发失效时补一针，全程本地 127.0.0.1。"""
     import hashlib
     try:
@@ -232,7 +232,7 @@ def _webui_quick_login(account: str) -> bool:
         if not cred:
             return False
         req = urllib.request.Request(
-            "http://127.0.0.1:{0}/api/QQLogin/SetQuickLoginQQ".format(port),
+            "http://127.0.0.1:{0}/api/QQLogin/SetQuickLogin".format(port),
             data=json.dumps({"uin": int(account)}).encode("utf-8"), method="POST")
         req.add_header("Content-Type", "application/json")
         req.add_header("Authorization", "Bearer " + cred)

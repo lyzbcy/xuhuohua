@@ -26,4 +26,5 @@ fi
 if [[ -z "$(find "$expected" -type f -print -quit)" ]]; then
   echo "QQ 持久化目录尚无登录数据；扫码后等待数据落盘，再重启验证" >&2; exit 1
 fi
-echo "QQ 持久化挂载及文件存在。此脚本无法证明账号已登录；必须在 WebUI 确认登录，重启容器后再次确认仍已登录，才可报告部署成功。此检查不会发消息。"
+python3 "$skill/scripts/qq-run.py" --dry-run
+echo "QQ 持久化挂载、实际登录和本机 OneBot 接口均已验证；此检查不会发消息。仍须重启容器后再次执行本脚本，才能证明登录态持久化。"

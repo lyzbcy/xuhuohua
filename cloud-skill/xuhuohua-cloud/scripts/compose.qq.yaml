@@ -2,6 +2,8 @@ services:
   napcat:
     image: mlikiowa/napcat-docker:v4.18.19
     container_name: xuhuohua-napcat
+    hostname: ${NAPCAT_HOSTNAME}
+    mac_address: ${NAPCAT_MAC_ADDRESS}
     restart: always
     environment:
       NAPCAT_UID: ${NAPCAT_UID}

@@ -5,7 +5,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from backend.paths import BUNDLE_DIR, PROJECT_ROOT
+from backend.paths import PROJECT_ROOT
 
 EXPORT_NAME = "xuhuohua-cloud.zip"
 LATEST_RELEASE_ASSET = "https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip"
@@ -15,13 +15,8 @@ LATEST_PROMPT_ASSET = "https://github.com/lyzbcy/xuhuohua/releases/latest/downlo
 def export_bundle() -> dict:
     skill = PROJECT_ROOT / "cloud-skill" / "xuhuohua-cloud"
     engine = PROJECT_ROOT / "douyin-auto-fire"
-    plugin = PROJECT_ROOT / "napcat-plugin-auto-tasks" / "dist"
-    if not (plugin / "index.mjs").is_file():
-        plugin = BUNDLE_DIR / "backend" / "assets" / "auto-tasks"
-    if not all(p.is_file() for p in (skill / "SKILL.md", PROJECT_ROOT / "VERSION", engine / "run.py",
-                                      plugin / "index.mjs", plugin / "package.json",
-                                      plugin / "LICENSE")):
-        return {"ok": False, "msg": "云端 Skill、抖音引擎或 QQ 插件缺失，请重新下载完整安装包"}
+    if not all(p.is_file() for p in (skill / "SKILL.md", PROJECT_ROOT / "VERSION", engine / "run.py")):
+        return {"ok": False, "msg": "云端 Skill 或抖音引擎缺失，请重新下载完整安装包"}
     destination = PROJECT_ROOT / EXPORT_NAME
     selected = [engine / name for name in
                 ("run.py", "requirements.txt", "config.example.json", "README.md", "LICENSE")]
@@ -35,9 +30,8 @@ def export_bundle() -> dict:
                      "prepare-douyin.sh", "start-douyin-desktop.sh",
                      "stop-douyin-desktop.sh", "login-douyin.sh",
                      "configure-qq.py", "notify-result.py",
-                     "check-update.sh", "update-skill.py"))
-    selected.extend(plugin / name for name in ("index.mjs", "package.json", "LICENSE"))
-    selected.extend((plugin / "webui").rglob("*"))
+                     "check-update.sh", "update-skill.py",
+                     "configure-onebot.py", "qq-run.py"))
     if not all(source.is_file() for source in selected):
         return {"ok": False, "msg": "云端包所需文件不完整，请重新安装"}
     with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -47,8 +41,6 @@ def export_bundle() -> dict:
                 continue
             if source.is_relative_to(skill):
                 name = Path("xuhuohua-cloud") / source.relative_to(skill)
-            elif source.is_relative_to(plugin):
-                name = Path("qq-plugin") / source.relative_to(plugin)
             else:
                 name = Path("douyin-auto-fire") / source.relative_to(engine)
             if source.suffix == ".sh":
@@ -67,7 +59,7 @@ def prompt() -> str:
 
 先问我是否开启 QQ 自动续火花、是否开启抖音自动续火花，以及每个启用平台的北京时间 HH:MM。只安装我选的平台，再逐步引导我配置好友和本地话术。部署时请主动建议我配置企业微信群机器人 webhook 推送链接，询问是否启用每日结果通知；这是可选项，跳过也要继续部署。如果我已给过链接，直接从私有上下文使用，不要再索取或复述。
 
-QQ：启动 NapCat 后运行 qq-login-page.sh start，默认给我可在浏览器打开的 QQ 实时二维码页面链接及 SSH 隧道命令；页面自动读取新二维码，不要反复发静态截图，也不要公开暴露端口。扫码授权后，检查 qq-data/QQ 持久化目录和 Docker 挂载，重启容器，再在 NapCat WebUI 确认同一账号仍已登录；若重启后要求重新扫码，先排查数据卷或账号风控，不能声称部署成功。确认后关闭临时 QQ 页面、启用好友任务并核对目标和发送时间。QQ 由插件定时发送，cron 只检查容器，不另建发送任务。
+QQ：启动 NapCat 后运行 qq-login-page.sh start，默认给我可在浏览器打开的 QQ 实时二维码页面链接及 SSH 隧道命令；页面自动读取新二维码，不要反复发静态截图，也不要公开暴露端口。安装器会固定容器 MAC 与主机名。扫码授权后，检查 qq-data/QQ 持久化目录和 Docker 挂载，运行 configure-onebot.py 配置仅供容器网络访问的带令牌 OneBot HTTP 接口，重启容器，再运行 verify-qq.sh 确认同一账号仍已登录；若重启后要求重新扫码，先排查设备标识、数据卷、同账号桌面 QQ 顶号或账号风控，不能声称部署成功。确认后关闭临时 QQ 页面、配置好友任务并核对目标和发送时间。当前 NapCat 镜像不加载第三方定时插件，QQ 由 crontab 每分钟核对设定时间并在到点时通过 OneBot 发送；登录确认前不可声称自动续火花就绪。
 
 抖音：准备 Playwright 与 Xvfb/x11vnc/noVNC 虚拟桌面。默认给我浏览器可打开的 noVNC 链接和 SSH 隧道命令，使用仅监听服务器本机的 6089 端口；先检查现有 nginx /vnc/ 是否把旧 6080 端口公开反代，不能沿用无密码的公网链接。让我直接操作可见浏览器扫码，并在可能出现的人脸验证中自行完成；不要默认要求安装 VNC 客户端。等我明确确认登录结束后，保存服务器私有登录态，运行 stop-douyin-desktop.sh 关闭 noVNC、VNC 和本次虚拟桌面，再做 --dry-run，确认通过后注册每日无头运行。
 

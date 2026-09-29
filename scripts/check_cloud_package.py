@@ -17,6 +17,8 @@ REQUIRED = {
     "xuhuohua-cloud/scripts/qq-login-page.sh",
     "xuhuohua-cloud/scripts/qq-login-page.py",
     "xuhuohua-cloud/scripts/configure-qq.py",
+    "xuhuohua-cloud/scripts/configure-onebot.py",
+    "xuhuohua-cloud/scripts/qq-run.py",
     "xuhuohua-cloud/scripts/notify-result.py",
     "xuhuohua-cloud/scripts/prepare-douyin.sh",
     "xuhuohua-cloud/scripts/start-douyin-desktop.sh",
@@ -24,10 +26,6 @@ REQUIRED = {
     "xuhuohua-cloud/scripts/stop-douyin-desktop.sh",
     "douyin-auto-fire/scripts/login.py",
     "douyin-auto-fire/run.py",
-    "qq-plugin/index.mjs",
-    "qq-plugin/package.json",
-    "qq-plugin/LICENSE",
-    "qq-plugin/webui/index.html",
 }
 
 
@@ -49,7 +47,7 @@ def check(path: Path) -> None:
             if ("qq-data" in parts or "artifacts" in parts or "storage_state" in parts
                     or basename.startswith("storage-state") or basename.startswith(".env")
                     or basename in {"config.json", "accounts.json", "settings.json",
-                                    "notify-command", "notify-webhook", "notify-state.json",
+                                    "notify-command", "notify-webhook", "notify-state.json", "qq-run-state.json",
                                     ".last-update-check", ".update.log", ".update.lock",
                                     "qq-login-page.pid"}):
                 raise SystemExit("云端包含私有文件")

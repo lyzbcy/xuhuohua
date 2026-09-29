@@ -125,9 +125,9 @@ def qq_result(config: dict, now: datetime) -> tuple[str, str] | None:
         completed = datetime.fromtimestamp(completed_ms / 1000, BEIJING)
         if due <= completed <= now and succeeded + failed > 0:
             status = "成功" if failed == 0 else "失败"
-            return status, f"成功 {succeeded}，失败 {failed}；详见 NapCat 日志"
+            return status, f"成功 {succeeded}，失败 {failed}；详见 logs/qq-run.log"
     if now >= due + timedelta(minutes=60):
-        return "失败", "计划时间后 60 分钟仍无整批完成记录，请检查登录态、容器和插件日志"
+        return "失败", "计划时间后 60 分钟仍无整批完成记录，请检查登录态、容器和 QQ 调度日志"
     return None
 
 

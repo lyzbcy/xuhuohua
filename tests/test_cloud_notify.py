@@ -116,6 +116,7 @@ class CloudNotifyTests(unittest.TestCase):
             (source / "notify-command").write_text("private", encoding="utf-8")
             (source / "notify-webhook").write_text("private", encoding="utf-8")
             (source / "notify-state.json").write_text("private", encoding="utf-8")
+            (source / "qq-run-state.json").write_text("private", encoding="utf-8")
             copy_filtered(source, target)
             self.assertEqual(sorted(p.name for p in target.iterdir()), ["SKILL.md"])
 

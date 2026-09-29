@@ -16,6 +16,17 @@ from backend import cloud, douyin, notify, qq, scheduler  # noqa: E402
 
 
 class ReleasePathTests(unittest.TestCase):
+    def test_qq_webui_calls_actual_quick_login_action(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory)
+            (config / "webui.json").write_text(json.dumps({"port": 6099, "token": "secret"}), encoding="utf-8")
+            responses = [io.BytesIO(b'{"data":{"Credential":"session"}}'),
+                         io.BytesIO(b'{"code":0}')]
+            with patch.object(qq, "NAPCAT_CONFIG_DIR", config), \
+                 patch.object(qq.urllib.request, "urlopen", side_effect=responses) as opened:
+                self.assertTrue(qq._webui_quick_login("123456"))
+            self.assertTrue(opened.call_args_list[1].args[0].full_url.endswith("/QQLogin/SetQuickLogin"))
+
     def test_douyin_browser_mode_defaults_to_headless_and_can_be_changed(self):
         with tempfile.TemporaryDirectory() as directory:
             settings = Path(directory) / "settings.json"
@@ -54,14 +65,14 @@ class ReleasePathTests(unittest.TestCase):
     def test_cloud_export_excludes_local_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "VERSION").write_text("0.13.7\n", encoding="ascii")
+            (root / "VERSION").write_text("0.13.8\n", encoding="ascii")
             skill = root / "cloud-skill" / "xuhuohua-cloud"
             (skill / "scripts").mkdir(parents=True)
             (skill / "SKILL.md").write_text("skill", encoding="utf-8")
             for name in ("install.sh", "install-qq.sh", "install-skill.sh",
                          "compose.qq.yaml", "qq-watchdog.sh", "verify-qq.sh",
                          "qq-qr.sh", "qq-login-page.sh", "qq-login-page.py",
-                         "configure-qq.py", "prepare-douyin.sh",
+                         "configure-qq.py", "configure-onebot.py", "qq-run.py", "prepare-douyin.sh",
                          "start-douyin-desktop.sh", "stop-douyin-desktop.sh",
                          "login-douyin.sh", "notify-result.py",
                          "check-update.sh", "update-skill.py"):
@@ -90,11 +101,10 @@ class ReleasePathTests(unittest.TestCase):
             import zipfile
             with zipfile.ZipFile(root / cloud.EXPORT_NAME) as archive:
                 self.assertIn("douyin-auto-fire/run.py", archive.namelist())
-                self.assertIn("qq-plugin/index.mjs", archive.namelist())
-                self.assertIn("qq-plugin/LICENSE", archive.namelist())
-                self.assertIn("qq-plugin/webui/index.html", archive.namelist())
+                self.assertFalse(any(n.startswith("qq-plugin/") for n in archive.namelist()))
                 self.assertIn("xuhuohua-cloud/scripts/install-qq.sh", archive.namelist())
-                self.assertEqual(archive.read("xuhuohua-cloud/VERSION").strip(), b"0.13.7")
+                self.assertEqual(archive.read("xuhuohua-cloud/VERSION").strip(), b"0.13.8")
+                self.assertIn("xuhuohua-cloud/scripts/qq-run.py", archive.namelist())
                 self.assertIn("xuhuohua-cloud/scripts/qq-login-page.py", archive.namelist())
                 self.assertIn("douyin-auto-fire/scripts/login.py", archive.namelist())
                 self.assertEqual(archive.read("xuhuohua-cloud/scripts/qq-qr.sh"), b"#!/bin/bash\necho ok\n")
