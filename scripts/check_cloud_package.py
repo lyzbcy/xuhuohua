@@ -48,6 +48,8 @@ def check(path: Path) -> None:
                     or basename.startswith("storage-state") or basename.startswith(".env")
                     or basename in {"config.json", "accounts.json", "settings.json",
                                     "notify-command", "notify-webhook", "notify-state.json", "qq-run-state.json",
+                                    "qq-result.json", "douyin-schedule.json", "notification-result.json",
+                                    "douyin-browser-path",
                                     ".last-update-check", ".update.log", ".update.lock",
                                     "qq-login-page.pid"}):
                 raise SystemExit("云端包含私有文件")
@@ -68,6 +70,8 @@ def check(path: Path) -> None:
             or "noVNC" not in deployment_prompt
             or "qq-login-page.sh" not in deployment_prompt
             or "qq-run.py --session-check" not in deployment_prompt
+            or "message_id" not in deployment_prompt
+            or "合并为一条通知" not in deployment_prompt
             or "不得用 watchdog 常驻 QQ" not in deployment_prompt):
         raise SystemExit("Release Prompt 缺少下载或引导步骤")
     print(f"CLOUD_PACKAGE_OK files={len(names)} sha256={actual}")

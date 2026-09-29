@@ -538,6 +538,48 @@ def _wait_http_up(port: int, token: str, seconds: int = 60) -> bool:
     return False
 
 
+def _history_message_text(item: dict) -> str:
+    raw = item.get("raw_message")
+    if isinstance(raw, str):
+        return raw
+    message = item.get("message")
+    if isinstance(message, str):
+        return message
+    if isinstance(message, list):
+        parts = []
+        for segment in message:
+            if not isinstance(segment, dict):
+                continue
+            data = segment.get("data") or {}
+            if segment.get("type") == "text" and isinstance(data.get("text"), str):
+                parts.append(data["text"])
+        return "".join(parts)
+    return ""
+
+
+def _confirm_private_message(port: int, token: str, target: str, message_id,
+                             own_id: str, expected: str) -> bool:
+    for attempt in range(5):
+        response = _onebot_call(port, token, "get_friend_msg_history",
+                                {"user_id": int(target), "count": 20}, timeout=10)
+        data = response.get("data")
+        messages = data if isinstance(data, list) else (data or {}).get("messages", [])
+        for item in messages if isinstance(messages, list) else []:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("message_id", item.get("msgId", ""))) != str(message_id):
+                continue
+            sender = item.get("sender") if isinstance(item.get("sender"), dict) else {}
+            sender_id = str(sender.get("user_id", item.get("user_id", "")))
+            if sender_id and sender_id != own_id:
+                continue
+            if _history_message_text(item).strip() == expected.strip():
+                return True
+        if attempt < 4:
+            time.sleep(1)
+    return False
+
+
 def qq_send_now() -> dict:
     """立即给好友续火花配置里的所有 QQ 号发送一条话术（OneBot 直连）。"""
     if not qq_running(max_age=0.0):
@@ -576,6 +618,8 @@ def qq_send_now() -> dict:
         message = "[CQ:image,file=file:///" + item["abs_path"].replace("\\", "/") + "] " + pool_mod.SIGNATURE
     logger.info("[QQ] 本次抽取话术: {0}".format("图片表情+签名" if item["type"] == "image" else "文字+签名"), source="qq")
     port, token = http_cfg["port"], http_cfg["token"]
+    login = _onebot_call(port, token, "get_login_info", timeout=5).get("data") or {}
+    own_id = str(login.get("user_id", ""))
     results = []
     for uid in [t.strip() for t in raw_targets.split(",") if t.strip()]:
         if not uid.isdigit():
@@ -583,9 +627,13 @@ def qq_send_now() -> dict:
             continue
         r = _onebot_call(port, token, "send_private_msg",
                          {"user_id": int(uid), "message": message}, timeout=15)
-        ok = r.get("retcode") == 0
+        message_id = (r.get("data") or {}).get("message_id")
+        ok = (r.get("retcode") == 0 and bool(message_id)
+              and _confirm_private_message(port, token, uid, message_id, own_id, message))
         results.append({"target": uid, "ok": ok,
-                        "msg": "已发送" if ok else "失败: {0}".format(r.get("message") or r.get("wording") or "未知")})
+                        "msg": "已发送且聊天记录已确认" if ok else
+                               "失败: {0}".format(r.get("message") or r.get("wording") or
+                                                  "聊天记录未确认，为避免重复不会自动重发")})
         (logger.ok if ok else logger.fail)("[QQ] 立即续火花 → {0}: {1}".format(uid, results[-1]["msg"]), source="qq")
     sent = sum(1 for x in results if x["ok"])
     from backend import notify as _notify

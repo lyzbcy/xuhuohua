@@ -40,6 +40,9 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$here/douyin-auto-fire"
 export HEADLESS=true
 export TZ=Asia/Shanghai
+export XUHUOHUA_SIGNATURE='——来自楼宇自动续火花'
+browser_path_file="$here/xuhuohua-cloud/douyin-browser-path"
+if [[ -f "$browser_path_file" ]]; then export BROWSER_PATH="$(cat "$browser_path_file")"; fi
 exec .venv/bin/python run.py
 RUNNER
 chmod 700 "$runner"
@@ -49,11 +52,12 @@ cat > "$due_runner" <<'DUE'
 set -euo pipefail
 if [[ "$(TZ=Asia/Shanghai date +%H:%M)" != "$1" ]]; then exit 0; fi
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+rm -f "$here/douyin-auto-fire/artifacts/notification-result.json"
 set +e
 /bin/bash "$here/xuhuohua-cloud/run.sh"
 result=$?
 set -e
-python3 "$here/xuhuohua-cloud/scripts/notify-result.py" douyin --exit-code "$result" || echo "抖音结果通知失败，请检查企业微信长连接机器人" >&2
+python3 "$here/xuhuohua-cloud/scripts/notify-result.py" douyin --exit-code "$result" || echo "续火花汇总通知失败，请检查企业微信群机器人 webhook" >&2
 exit "$result"
 DUE
 chmod 700 "$due_runner"
@@ -63,6 +67,9 @@ hour="${1%%:*}"
 minute="${1##*:}"
 hour="$((10#$hour))"
 minute="$((10#$minute))"
+schedule="$here/xuhuohua-cloud/douyin-schedule.json"
+printf '{"enabled":true,"time":"%02d:%02d"}\n' "$hour" "$minute" > "$schedule"
+chmod 600 "$schedule"
 tag="# xuhuohua-cloud-daily"
 entry="* * * * * /bin/bash '$due_runner' '$(printf '%02d:%02d' "$hour" "$minute")' >> '$here/logs/cron.log' 2>&1 $tag"
 existing="$(crontab -l 2>/dev/null || true)"

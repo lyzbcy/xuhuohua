@@ -30,9 +30,9 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 1. 检查 Docker Engine、Compose v2、Python 3 和 crontab。运行 `bash xuhuohua-cloud/scripts/install-qq.sh`。它部署固定版本 `mlikiowa/napcat-docker:v4.18.19`，将旧版被白名单拒载的插件移入私有备份目录，固定容器 MAC 与主机名，删除旧版常驻 watchdog，并注册 QQ 本机 cron；已有好友配置不会被覆盖。容器路径以 [NapCat Docker 官方文档](https://github.com/NapNeko/NapCat-Docker) 为准。
 2. 默认运行 `bash xuhuohua-cloud/scripts/qq-login-page.sh start`，给用户 `ssh -L 6100:127.0.0.1:6100 用户@服务器` 和浏览器链接 `http://127.0.0.1:6100/`。这是只监听服务器本机、每 2 秒读取最新二维码的页面；过期会提示在 WebUI 刷新，**不要反复发送静态二维码截图**。需要管理 NapCat 时另建 `ssh -L 6099:127.0.0.1:6099 用户@服务器`，打开 `http://127.0.0.1:6099/webui`。两个端口都不能公开到公网；不要把 WebUI Token 发给他人。
-3. 用户扫码并在手机上授权后，先在 WebUI 确认账号已登录，检查 `/app/.config/QQ` 是否挂载到原有 `qq-data/QQ` 且已落盘。询问目标 QQ 号和一条本地话术，运行 `python3 xuhuohua-cloud/scripts/configure-qq.py --time HH:MM --targets QQ号1,QQ号2 --message '话术'`；再运行 `python3 xuhuohua-cloud/scripts/configure-onebot.py` 写入私有 OneBot 令牌；两者均不会发消息。**重启容器后再次运行 `verify-qq.sh` 确认同一账号仍已登录**。若重新要求扫码，先检查固定设备标识、挂载目录、权限和 QQ 设备信任；解决并重做重启验证，不要宣称成功。
+3. 用户扫码并在手机上授权后，先在 WebUI 确认账号已登录，检查 `/app/.config/QQ` 是否挂载到原有 `qq-data/QQ` 且已落盘。询问目标 QQ 号和一条本地话术，运行 `python3 xuhuohua-cloud/scripts/configure-qq.py --time HH:MM --targets QQ号1,QQ号2 --message '话术'`；运行时会自动追加固定结尾 `——来自楼宇自动续火花`，不要让用户重复填写签名。再运行 `python3 xuhuohua-cloud/scripts/configure-onebot.py` 写入私有 OneBot 令牌；两者均不会发消息。**重启容器后再次运行 `verify-qq.sh` 确认同一账号仍已登录**。若重新要求扫码，先检查固定设备标识、挂载目录、权限和 QQ 设备信任；解决并重做重启验证，不要宣称成功。
 4. 关闭临时页面：`bash xuhuohua-cloud/scripts/qq-login-page.sh stop`。随后运行 `python3 xuhuohua-cloud/scripts/qq-run.py --session-check`，它必须完成“启动容器 → 自动登录 → OneBot 真登录验证 → 停止容器”，全程不发消息。确认 `docker inspect -f '{{.State.Running}}' xuhuohua-napcat` 输出 `false` 后，才算 QQ 部署通过。
-5. QQ cron 每分钟核对北京时间，仅在配置分钟且当天尚未执行时工作。执行顺序固定为：启动 NapCat → 等待自动登录 → 未上线时通过本机 WebUI `/SetQuickLogin` 主动快登 → 验证 OneBot 账号 → 发送整批 → 无论成功、部分失败或异常都在 `finally` 中停止容器。停止容器会释放 QQ 在线会话并保留下次快登凭证；不要调用会清除设备信任的账号注销。平时不得启动 watchdog 或保持容器常驻。
+5. QQ cron 每分钟核对北京时间，仅在配置分钟且当天尚未执行时工作。执行顺序固定为：启动 NapCat → 等待自动登录 → 未上线时通过本机 WebUI `/SetQuickLogin` 主动快登 → 验证 OneBot 账号 → 发送单条消息 → 用返回的 `message_id`、本人账号和完整正文回查聊天记录 → 整批结束后停止容器。只有聊天记录三项完全匹配才算成功；接口只返回成功但历史中找不到时按失败记录，为避免重复不自动重发。无论成功、部分失败或异常都在 `finally` 中停止容器。停止容器会释放 QQ 在线会话并保留下次快登凭证；不要调用会清除设备信任的账号注销。平时不得启动 watchdog 或保持容器常驻。
 6. 如果同账号在本机登录并把云端顶下线，无需立即处理；到点脚本会重新快登，可能把本机会话顶下线，发送后再释放。若 QQ 风控使快登凭证失效，任务应失败并通知用户重新扫码，不能绕过安全验证。若错过时间，不自动补发。不要叠加其他 QQ 发送 cron。
 
 ## 4. 抖音虚拟桌面登录与定时
@@ -40,7 +40,7 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 1. 运行 `bash xuhuohua-cloud/scripts/prepare-douyin.sh` 安装 Python 依赖和 Chromium。若浏览器缺少系统库，按 Playwright 诊断安装依赖。虚拟桌面需 `Xvfb`、`x11vnc`、`novnc`、`websockify`，建议有 `fluxbox`；在 Debian/Ubuntu 可安装 `xvfb x11vnc novnc websockify fluxbox`。
 2. 运行 `bash xuhuohua-cloud/scripts/start-douyin-desktop.sh`，随即在持续运行的终端执行 `bash xuhuohua-cloud/scripts/login-douyin.sh`，等待浏览器进入登录页。**默认提供 noVNC 网页链接**：让用户在自己电脑建立 `ssh -L 6089:127.0.0.1:6089 用户@服务器`，在浏览器打开 `http://127.0.0.1:6089/vnc_lite.html?autoconnect=true`。6089 刻意避开可能已由 nginx `/vnc/` 公开反代的 6080；上线前仍应核对本机反代配置。noVNC 与 VNC 仅监听服务器本机，必须经 SSH 隧道；不要公开无密码桌面，也不要默认要求用户安装 VNC 客户端。
 3. 用户亲自操作 noVNC 中的浏览器完成扫码、可能出现的人脸验证。**等用户明确确认登录结束**且浏览器显示已登录后，Agent 才给登录脚本输入 Enter；脚本将登录态保存为服务器私有的 `douyin-auto-fire/storage-state.json`。确认文件存在且权限为 600 后，立即运行 `bash xuhuohua-cloud/scripts/stop-douyin-desktop.sh`，关闭 noVNC、VNC 和本次启动的虚拟桌面。若登录失败，也关闭临时桌面并报告原因。
-4. 询问好友昵称和本地文字话术，基于 `douyin-auto-fire/config.example.json` 创建私有 `config.json`，先用 1 位好友和 1 条文字消息，开启防重复，并保持文件权限为 600。执行 `cd douyin-auto-fire && .venv/bin/python run.py --dry-run` 验证登录态和目标。通过后运行 `bash xuhuohua-cloud/scripts/install.sh HH:MM` 注册北京时间每日 cron；正式运行默认无头。
+4. 询问好友昵称和本地文字话术，基于 `douyin-auto-fire/config.example.json` 创建私有 `config.json`，先用 1 位好友和 1 条文字消息，开启防重复，并保持文件权限为 600。执行 `cd douyin-auto-fire && .venv/bin/python run.py --dry-run` 验证登录态和目标。通过后运行 `bash xuhuohua-cloud/scripts/install.sh HH:MM` 注册北京时间每日 cron；正式运行默认无头，并为每位好友自动追加独立签名消息 `——来自楼宇自动续火花`，配置已有相同签名时不会重复追加。
 
 ## 5. 可选的企业微信群机器人结果通知
 
@@ -48,7 +48,7 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 运行 `python3 xuhuohua-cloud/scripts/notify-result.py test`，确认目标企业微信群收到了测试消息，才向用户报告通知已启用。脚本仅向 `https://qyapi.weixin.qq.com/cgi-bin/webhook/send` 发送文本消息并检查接口错误码。旧版的私有 `notify-command` 适配命令仍兼容，但新安装优先使用 webhook；如果两者都有，以 `notify-webhook` 为准。
 
-启用后，抖音每日 cron 在实际运行结束时按退出码发**一条**成功或失败通知；QQ 根据本机 cron 的整批结果发**一条**，消息发送成功但自动退出失败也按失败通知，到点后 60 分钟无完成记录同样报告失败。消息只含平台、结果、北京时间和简要数量/错误提示，不带好友名单与凭证。发送失败记录在 `logs/cron.log` 或 `logs/qq-result.log`，不改变续火花任务本身的结果。没有通知配置时两个平台照常运行，不发通知；不应把测试发送当成续火花任务。
+启用后，每个北京时间日期最多推送**一条合并通知**。若同时启用抖音和 QQ，要等两边都有终态后再发送；任一平台在计划时间后 60 分钟仍无完成记录，则把该平台作为失败并纳入当天汇总。汇总逐项列出平台、真实好友名称（QQ 仅展示尾号）、实际发送内容和聊天记录确认结果；抖音读取私有 `notification-result.json`，QQ 读取私有 `qq-result.json`。QQ 消息发送后自动退出失败也按失败。所有明细文件权限为 600，发布包必须排除。通知发送失败只写 `logs/cron.log` 或 `logs/qq-result.log`，不改变续火花任务本身的结果。没有通知配置时两个平台照常运行，不发通知；测试消息不得伪装成续火花任务。
 
 ## 6. Skill 静默更新
 

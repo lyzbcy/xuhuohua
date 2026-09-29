@@ -6,6 +6,14 @@ const vm = require('node:vm');
 const test = require('node:test');
 const ts = require('../napcat-plugin-auto-tasks/node_modules/typescript');
 
+test('strict friend send never treats No data returned as success', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../napcat-plugin-auto-tasks/src/core/state.ts'), 'utf8');
+  const strict = source.match(/async callApiStrict[\s\S]*?\n    }/);
+  assert.ok(strict, 'callApiStrict should exist');
+  assert.doesNotMatch(strict[0], /No data returned/);
+  assert.match(strict[0], /return await this\.ctx\.actions\.call/);
+});
+
 test('friend batch is persisted only after every target is attempted', async () => {
   const now = new Date(2026, 8, 28, 10, 0, 0);
   class FixedDate extends Date {

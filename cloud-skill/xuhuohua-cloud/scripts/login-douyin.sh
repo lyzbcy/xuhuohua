@@ -10,6 +10,8 @@ if ! pgrep -f '(^|/)Xvfb :99 ' >/dev/null; then
   echo "请先运行 start-douyin-desktop.sh" >&2; exit 2
 fi
 export DISPLAY=:99
+browser_path_file="$here/xuhuohua-cloud/douyin-browser-path"
+if [[ -f "$browser_path_file" ]]; then export BROWSER_PATH="$(cat "$browser_path_file")"; fi
 cd "$engine"
 "$engine/.venv/bin/python" scripts/login.py
 chmod 600 storage-state.json

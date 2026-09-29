@@ -94,6 +94,6 @@ run_entry="* * * * * $(command -v python3) '$skill/scripts/qq-run.py' >> '$here/
 existing="$(crontab -l 2>/dev/null || true)"
 printf '%s\n' "$existing" | sed '/# xuhuohua-cloud-qq-send$/d' | { cat; printf '%s\n' "$run_entry"; } | crontab -
 echo "NapCat 已启动供首次扫码；完成登录验收后应停止容器。"
-echo "cron 每分钟核对 QQ 设定时间：到点启动容器、自动快登、发送并退出。"
+echo "cron 每分钟核对 QQ 设定时间：到点启动容器、自动快登、发送、聊天记录回查并退出。"
 echo "WebUI 仅监听服务器 127.0.0.1:6099；请通过 SSH 隧道访问并扫码。"
 echo "扫码后运行 configure-onebot.py 并重启容器，执行 verify-qq.sh，再用 qq-run.py --session-check 验收自动收摊。"

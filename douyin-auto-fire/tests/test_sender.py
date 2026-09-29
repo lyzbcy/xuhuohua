@@ -215,10 +215,11 @@ async def test_random_message_delegates_to_selected_choice(monkeypatch) -> None:
     monkeypatch.setattr("app.sender._mark_latest_outgoing_message", AsyncMock(return_value=("anchor", "")))
     monkeypatch.setattr("app.sender._confirm_outgoing_message", AsyncMock())
 
-    await send_message(page, chat, message, {})
+    actual = await send_message(page, chat, message, {})
 
     page.keyboard.insert_text.assert_awaited_once_with("你好")
     page.keyboard.press.assert_awaited_once_with("Enter")
+    assert actual == "你好"
 
 
 @pytest.mark.asyncio
@@ -238,7 +239,7 @@ async def test_trigger_send_clicks_publish_button_when_visible() -> None:
 
     await _trigger_send(page)
 
-    button.click.assert_awaited_once_with()
+    button.click.assert_awaited_once_with(timeout=8_000)
     page.keyboard.press.assert_not_called()
 
 

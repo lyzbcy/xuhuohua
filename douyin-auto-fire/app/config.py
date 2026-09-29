@@ -62,6 +62,9 @@ def load_task(settings: Settings) -> TaskConfig:
         raise ConfigError("targets 必须是非空数组")
 
     targets = tuple(_parse_target(item, index, settings.task_config_path.parent) for index, item in enumerate(targets_raw))
+    signature = _optional_env("XUHUOHUA_SIGNATURE")
+    if signature:
+        targets = tuple(_with_signature(target, signature) for target in targets)
     interval = raw.get("send_interval_seconds", {})
     if not isinstance(interval, dict):
         raise ConfigError("send_interval_seconds 必须是对象")
@@ -104,6 +107,15 @@ def load_task(settings: Settings) -> TaskConfig:
 
     _validate_stickers(task)
     return task
+
+
+def _with_signature(target: Target, signature: str) -> Target:
+    """Append the cloud signature as its own Douyin message exactly once."""
+    messages = list(target.messages)
+    if not any(message.type == "text" and (message.content or "").strip() == signature
+               for message in messages):
+        messages.append(Message(type="text", content=signature))
+    return Target(name=target.name, messages=tuple(messages))
 
 
 def parse_auth_json(value: str, label: str) -> Any:

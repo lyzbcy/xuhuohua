@@ -68,3 +68,4 @@ class TargetResult:
     sent: int = 0
     error: str | None = None
     target_alias: str | None = None
+    messages: tuple[str, ...] = ()

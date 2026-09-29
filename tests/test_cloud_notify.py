@@ -67,24 +67,47 @@ class CloudNotifyTests(unittest.TestCase):
              patch.object(sys, "argv", ["notify-result.py", "test"]):
             self.assertEqual(notify.main(), 2)
 
-    def test_qq_result_is_sent_once_per_beijing_day(self):
+    def test_platforms_are_merged_once_with_recipient_and_message_details(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config_file = root / "config.json"
-            self.config["stats"] = {
-                "friendSparkCompletedAt": int((self.due + timedelta(seconds=15)).timestamp() * 1000),
-                "friendSparkSucceeded": 1, "friendSparkFailed": 0,
-            }
+            self.config.update(friendSpark_targets="123456", friendSpark_message="早安\n——来自楼宇自动续火花")
             config_file.write_text(json.dumps(self.config), encoding="utf-8")
+            schedule = root / "douyin-schedule.json"
+            schedule.write_text(json.dumps({"enabled": True, "time": "08:30"}), encoding="utf-8")
+            douyin = root / "douyin-result.json"
+            douyin.write_text(json.dumps({
+                "finished_at": (self.due + timedelta(seconds=10)).isoformat(),
+                "results": [{"target": "宝宝大人", "status": "success",
+                             "messages": ["早安", "——来自楼宇自动续火花"]}],
+            }, ensure_ascii=False), encoding="utf-8")
+            qq = root / "qq-result.json"
             with patch.object(notify, "QQ_CONFIG", config_file), \
+                 patch.object(notify, "QQ_RESULT", qq), \
+                 patch.object(notify, "DOUYIN_RESULT", douyin), \
+                 patch.object(notify, "DOUYIN_SCHEDULE", schedule), \
                  patch.object(notify, "STATE_FILE", root / "state.json"), \
                  patch.object(notify, "fcntl", SimpleNamespace(flock=lambda *_: None, LOCK_EX=1)), \
                  patch.object(notify, "send", return_value=True) as sent:
                 now = self.due + timedelta(minutes=1)
-                self.assertEqual(notify.notify_qq(Path("unused"), now), 0)
-                self.assertEqual(notify.notify_qq(Path("unused"), now), 0)
+                self.assertEqual(notify.aggregate(("command", Path("unused")), "douyin", now, 0), 0)
+                sent.assert_not_called()
+                qq.write_text(json.dumps({
+                    "day": "2026-09-29", "session_stopped": True,
+                    "recipients": [{"target": "123456", "name": "小周",
+                                    "message": "早安\n——来自楼宇自动续火花",
+                                    "confirmed": True, "error": None}],
+                }, ensure_ascii=False), encoding="utf-8")
+                self.assertEqual(notify.aggregate(("command", Path("unused")), "qq", now), 0)
+                self.assertEqual(notify.aggregate(("command", Path("unused")), "qq", now), 0)
                 sent.assert_called_once()
-                self.assertEqual(json.loads((root / "state.json").read_text())["qq_notified_day"], "2026-09-29")
+                message = sent.call_args.args[1]
+                self.assertIn("宝宝大人", message)
+                self.assertIn("小周（QQ尾号 3456）", message)
+                self.assertIn("早安", message)
+                self.assertIn("——来自楼宇自动续火花", message)
+                state = json.loads((root / "state.json").read_text(encoding="utf-8"))
+                self.assertTrue(state["days"]["2026-09-29"]["notified"])
 
     def test_release_prompt_advises_optional_webhook_and_update(self):
         import sys
@@ -127,6 +150,9 @@ class CloudNotifyTests(unittest.TestCase):
             (source / "notify-webhook").write_text("private", encoding="utf-8")
             (source / "notify-state.json").write_text("private", encoding="utf-8")
             (source / "qq-run-state.json").write_text("private", encoding="utf-8")
+            (source / "qq-result.json").write_text("private", encoding="utf-8")
+            (source / "douyin-schedule.json").write_text("private", encoding="utf-8")
+            (source / "notification-result.json").write_text("private", encoding="utf-8")
             copy_filtered(source, target)
             self.assertEqual(sorted(p.name for p in target.iterdir()), ["SKILL.md"])
 

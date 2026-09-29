@@ -50,13 +50,25 @@ class CloudQQRunnerTests(unittest.TestCase):
             (skill / "qq-data/config/onebot11_345678.json").write_text("{}", encoding="utf-8")
             now = datetime.now(BEIJING).replace(hour=9, minute=0, second=0, microsecond=0)
             calls = []
+            sent_ids = iter((101, 102))
 
             def fake_onebot(action, payload, *_):
                 calls.append(action)
-                return {"message_id": len(calls)}
+                if action == "get_friend_list":
+                    return [{"user_id": 123456, "remark": "甲"},
+                            {"user_id": 234567, "nickname": "乙"}]
+                if action == "send_private_msg":
+                    return {"message_id": next(sent_ids)}
+                if action == "get_friend_msg_history":
+                    message_id = 101 if payload["user_id"] == 123456 else 102
+                    return {"messages": [{"message_id": message_id,
+                                           "sender": {"user_id": 345678},
+                                           "raw_message": "早安\n——来自楼宇自动续火花"}]}
+                raise AssertionError(action)
 
             with patch.object(runner, "SKILL", skill), patch.object(runner, "QQ_CONFIG", config), \
                  patch.object(runner, "STATE", skill / "state.json"), \
+                 patch.object(runner, "RESULT", skill / "result.json"), \
                  patch.object(runner, "fcntl", SimpleNamespace(flock=lambda *_: None, LOCK_EX=1)), \
                  patch.object(runner, "start_container") as started, \
                  patch.object(runner, "wait_for_login", return_value=("http://local", "secret")), \
@@ -67,10 +79,15 @@ class CloudQQRunnerTests(unittest.TestCase):
                 self.assertEqual(runner.run_due(now), "already-ran")
             started.assert_called_once()
             stopped.assert_called_once()
-            self.assertEqual(calls, ["send_private_msg", "send_private_msg"])
+            self.assertEqual(calls, ["get_friend_list", "send_private_msg", "get_friend_msg_history",
+                                     "send_private_msg", "get_friend_msg_history"])
             stats = json.loads(config.read_text(encoding="utf-8"))["stats"]
             self.assertEqual((stats["friendSparkSucceeded"], stats["friendSparkFailed"]), (2, 0))
             self.assertTrue(stats["friendSparkSessionStopped"])
+            detail = json.loads((skill / "result.json").read_text(encoding="utf-8"))
+            self.assertEqual([x["name"] for x in detail["recipients"]], ["甲", "乙"])
+            self.assertTrue(all(x["confirmed"] for x in detail["recipients"]))
+            self.assertIn("——来自楼宇自动续火花", detail["recipients"][0]["message"])
 
     def test_dry_run_does_not_send_or_write(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -84,6 +101,7 @@ class CloudQQRunnerTests(unittest.TestCase):
             (skill / "qq-data/config/onebot11_345678.json").write_text("{}", encoding="utf-8")
             with patch.object(runner, "SKILL", skill), patch.object(runner, "QQ_CONFIG", config), \
                  patch.object(runner, "STATE", skill / "state.json"), \
+                 patch.object(runner, "RESULT", skill / "result.json"), \
                  patch.object(runner, "endpoint", return_value=("http://local", "secret")), \
                  patch.object(runner, "check_login") as check:
                 self.assertEqual(runner.run_due(dry_run=True), "ready:1")
@@ -113,6 +131,7 @@ class CloudQQRunnerTests(unittest.TestCase):
             now = datetime.now(BEIJING).replace(hour=9, minute=0, second=0, microsecond=0)
             with patch.object(runner, "SKILL", skill), patch.object(runner, "QQ_CONFIG", config), \
                  patch.object(runner, "STATE", skill / "state.json"), \
+                 patch.object(runner, "RESULT", skill / "result.json"), \
                  patch.object(runner, "fcntl", SimpleNamespace(flock=lambda *_: None, LOCK_EX=1)), \
                  patch.object(runner, "start_container"), \
                  patch.object(runner, "wait_for_login", side_effect=RuntimeError("offline")), \
@@ -122,6 +141,18 @@ class CloudQQRunnerTests(unittest.TestCase):
             stats = json.loads(config.read_text(encoding="utf-8"))["stats"]
             self.assertEqual(stats["friendSparkFailed"], 1)
             self.assertTrue(stats["friendSparkSessionStopped"])
+
+    def test_message_id_without_matching_history_is_failure(self):
+        history = {"messages": [{"message_id": 88, "sender": {"user_id": 345678},
+                                  "raw_message": "另一条消息"}]}
+        with patch.object(runner, "onebot", return_value=history), patch.object(runner.time, "sleep"):
+            self.assertFalse(runner.confirm_sent("123456", 88, "345678", "早安", "http://local", "token"))
+
+    def test_matching_history_is_confirmed(self):
+        history = {"messages": [{"message_id": 88, "sender": {"user_id": 345678},
+                                  "raw_message": "早安\n——来自楼宇自动续火花"}]}
+        self.assertTrue(runner.history_confirms(history, 88, "345678",
+                                                "早安\n——来自楼宇自动续火花"))
 
     def test_wait_for_login_triggers_real_quick_login_action(self):
         with patch.object(runner, "endpoint", return_value=("http://local", "secret")), \

@@ -89,6 +89,7 @@ async def run(dry_run: bool = False, env_file: str | None = None) -> int:
 
                 for index, target in enumerate(task.targets):
                     sent = 0
+                    sent_messages: list[str] = []
                     alias = target_alias(index)
                     target_progress.start_target(alias)
                     message_start_time = time.time()
@@ -119,19 +120,21 @@ async def run(dry_run: bool = False, env_file: str | None = None) -> int:
                                 # 发送单条消息并计时
                                 msg_start = time.time()
                                 await verify_login(page, timeout_ms=3_000)
-                                await send_message(page, chat, message, task.stickers)
+                                sent_description = await send_message(page, chat, message, task.stickers)
                                 msg_duration = time.time() - msg_start
                                 metrics.record_message_time(msg_duration)
 
                                 if task.prevent_duplicates:
                                     history.mark_success(key)
                                 sent += 1
+                                sent_messages.append(sent_description)
 
                                 if message_index < len(target.messages) - 1:
                                     await asyncio.sleep(random.uniform(task.interval_min, task.interval_max))
 
                         # 记录目标成功
-                        results.append(TargetResult(target=target.name, status="success", sent=sent, target_alias=alias))
+                        results.append(TargetResult(target=target.name, status="success", sent=sent,
+                                                    target_alias=alias, messages=tuple(sent_messages)))
                         metrics.record_target_success(sent)
                         target_progress.finish_target("success")
 
@@ -148,7 +151,8 @@ async def run(dry_run: bool = False, env_file: str | None = None) -> int:
                             except Exception:
                                 LOGGER.exception("保存 trace 失败")
 
-                        results.append(TargetResult(target=target.name, status="failed", sent=sent, error=str(exc), target_alias=alias))
+                        results.append(TargetResult(target=target.name, status="failed", sent=sent, error=str(exc),
+                                                    target_alias=alias, messages=tuple(sent_messages)))
                         metrics.record_target_failure(type(exc).__name__, sent)
                         target_progress.finish_target("failed")
                         fatal_error = exc
@@ -169,7 +173,8 @@ async def run(dry_run: bool = False, env_file: str | None = None) -> int:
                             except Exception:
                                 LOGGER.exception("保存 trace 失败")
 
-                        results.append(TargetResult(target=target.name, status="failed", sent=sent, error=str(exc), target_alias=alias))
+                        results.append(TargetResult(target=target.name, status="failed", sent=sent, error=str(exc),
+                                                    target_alias=alias, messages=tuple(sent_messages)))
                         metrics.record_target_failure(type(exc).__name__, sent)
                         target_progress.finish_target("failed")
 
@@ -312,6 +317,28 @@ def _write_results(
         "results": [_redacted_result(result, aliases) for result in results],
     }
     (artifacts_dir / "result.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    if not dry_run:
+        private_payload = {
+            "platform": "douyin",
+            "task_id": task_id,
+            "finished_at": payload["finished_at"],
+            "results": [
+                {
+                    "target": result.target,
+                    "status": result.status,
+                    "sent": result.sent,
+                    "messages": list(result.messages),
+                    "error": result.error,
+                }
+                for result in results
+            ],
+        }
+        private_path = artifacts_dir / "notification-result.json"
+        private_path.write_text(json.dumps(private_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            private_path.chmod(0o600)
+        except OSError:
+            pass
 
 
 def _redacted_result(result: TargetResult, aliases: dict[str, str] | None = None) -> dict:

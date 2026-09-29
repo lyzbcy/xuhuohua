@@ -1,8 +1,4 @@
-"""Optional post-run notifications through a private WeCom group webhook.
-
-The private notify-webhook file holds the group robot URL. The older
-notify-command adapter remains supported for installations that already use it.
-"""
+"""Aggregate QQ and Douyin outcomes into one detailed daily WeCom message."""
 
 import argparse
 import json
@@ -18,7 +14,7 @@ from pathlib import Path
 
 try:
     import fcntl
-except ImportError:  # Lets Windows CI test the pure result parser; runtime is Linux.
+except ImportError:  # Windows unit tests; cloud runtime is Linux.
     fcntl = None
 
 SKILL = Path(__file__).resolve().parents[1]
@@ -27,7 +23,11 @@ COMMAND_FILE = SKILL / "notify-command"
 WEBHOOK_FILE = SKILL / "notify-webhook"
 STATE_FILE = SKILL / "notify-state.json"
 QQ_CONFIG = SKILL / "qq-data/config/plugins/napcat-plugin-auto-tasks/config.json"
+QQ_RESULT = SKILL / "qq-result.json"
+DOUYIN_RESULT = ROOT / "douyin-auto-fire/artifacts/notification-result.json"
+DOUYIN_SCHEDULE = SKILL / "douyin-schedule.json"
 BEIJING = timezone(timedelta(hours=8), "Asia/Shanghai")
+MAX_MESSAGE_BYTES = 2000
 
 
 def command_path() -> Path | None:
@@ -84,25 +84,36 @@ def send(destination: tuple[str, str | Path], message: str) -> bool:
                 return True
             print(f"企业微信通知发送失败，接口错误码 {result.get('errcode', 'unknown')}", file=sys.stderr)
         except (OSError, ValueError, urllib.error.URLError) as exc:
-            # Never include the URL: its key is a credential.
             print(f"企业微信通知发送失败：{type(exc).__name__}", file=sys.stderr)
         return False
     try:
         result = subprocess.run([str(value)], input=message + "\n", text=True,
-                                encoding="utf-8",
-                                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                                timeout=30, check=False)
+                                encoding="utf-8", stdout=subprocess.DEVNULL,
+                                stderr=subprocess.PIPE, timeout=30, check=False)
     except (OSError, subprocess.TimeoutExpired) as exc:
         print(f"企业微信通知发送失败：{type(exc).__name__}", file=sys.stderr)
         return False
-    if result.returncode:
-        print(f"企业微信通知发送失败，适配命令退出码 {result.returncode}", file=sys.stderr)
-        return False
-    return True
+    return result.returncode == 0
+
+
+def _read_json(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _day(value) -> str | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value)).astimezone(BEIJING).strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        return None
 
 
 def qq_result(config: dict, now: datetime) -> tuple[str, str] | None:
-    """Return a terminal result for today's configured QQ batch, if known."""
+    """Compatibility summary used when a pre-0.13.10 install has no detail file."""
     if not config.get("enabled") or not config.get("friendSpark_enable"):
         return None
     when = str(config.get("friendSpark_time", ""))
@@ -112,68 +123,190 @@ def qq_result(config: dict, now: datetime) -> tuple[str, str] | None:
     due = now.replace(hour=hour, minute=minute, second=second, microsecond=0)
     if now < due:
         return None
-    stats = config.get("stats") or {}
-    if not isinstance(stats, dict):
-        stats = {}
+    stats = config.get("stats") if isinstance(config.get("stats"), dict) else {}
     try:
         completed_ms = int(stats.get("friendSparkCompletedAt") or 0)
         succeeded = int(stats.get("friendSparkSucceeded") or 0)
         failed = int(stats.get("friendSparkFailed") or 0)
     except (TypeError, ValueError):
         completed_ms = succeeded = failed = 0
-    if completed_ms > 0:
+    if completed_ms:
         completed = datetime.fromtimestamp(completed_ms / 1000, BEIJING)
         if due <= completed <= now and succeeded + failed > 0:
-            session_stopped = stats.get("friendSparkSessionStopped") is not False
-            status = "成功" if failed == 0 and session_stopped else "失败"
-            cleanup = "已自动退出" if session_stopped else "自动退出失败"
-            return status, f"成功 {succeeded}，失败 {failed}；{cleanup}；详见 logs/qq-run.log"
+            stopped = stats.get("friendSparkSessionStopped") is not False
+            status = "成功" if failed == 0 and stopped else "失败"
+            cleanup = "已自动退出" if stopped else "自动退出失败"
+            return status, f"成功 {succeeded}，失败 {failed}；{cleanup}"
     if now >= due + timedelta(minutes=60):
-        return "失败", "计划时间后 60 分钟仍无整批完成记录，请检查登录态、容器和 QQ 调度日志"
+        return "失败", "计划时间后 60 分钟仍无整批完成记录"
     return None
 
 
-def notify_qq(destination: tuple[str, str | Path], now: datetime) -> int:
-    if fcntl is None:
-        raise RuntimeError("QQ 结果通知仅支持 Linux")
-    if not QQ_CONFIG.is_file():
-        return 0
-    try:
-        config = json.loads(QQ_CONFIG.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        print(f"QQ 通知状态读取失败：{type(exc).__name__}", file=sys.stderr)
-        return 1
+def _due(config: dict | None, now: datetime) -> datetime | None:
     if not isinstance(config, dict):
-        print("QQ 通知状态读取失败：配置不是 JSON 对象", file=sys.stderr)
-        return 1
-    outcome = qq_result(config, now)
-    if outcome is None:
-        return 0
-    status, detail = outcome
-    # Cron can overlap when a notification transport stalls. Hold one lock
-    # until the result is sent and the day's deduplication marker is saved.
+        return None
+    value = str(config.get("time") or config.get("friendSpark_time") or "")
+    if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?", value):
+        return None
+    parts = list(map(int, value.split(":")))
+    return now.replace(hour=parts[0], minute=parts[1], second=parts[2] if len(parts) > 2 else 0,
+                       microsecond=0)
+
+
+def _enabled(invoked: str) -> tuple[list[str], dict, dict]:
+    qq = _read_json(QQ_CONFIG)
+    douyin = _read_json(DOUYIN_SCHEDULE)
+    platforms = []
+    if isinstance(douyin, dict) and douyin.get("enabled"):
+        platforms.append("douyin")
+    if isinstance(qq, dict) and qq.get("enabled") and qq.get("friendSpark_enable"):
+        platforms.append("qq")
+    if invoked in {"douyin", "qq"} and invoked not in platforms:
+        platforms.append(invoked)
+    return platforms, douyin or {}, qq or {}
+
+
+def _douyin_terminal(now: datetime, exit_code: int | None):
+    data = _read_json(DOUYIN_RESULT)
+    today = now.strftime("%Y-%m-%d")
+    if isinstance(data, dict) and _day(data.get("finished_at")) == today:
+        items = []
+        for item in data.get("results", []):
+            if isinstance(item, dict):
+                items.append({"target": str(item.get("target") or "未知好友"),
+                              "messages": [str(x) for x in item.get("messages", [])],
+                              "ok": item.get("status") == "success",
+                              "error": str(item.get("error") or "")})
+        if items:
+            return {"status": "success" if all(x["ok"] for x in items) else "failed", "items": items}
+    if exit_code is not None:
+        detail = "未生成可核验的发送明细" if exit_code == 0 else f"任务退出码 {exit_code}"
+        return {"status": "failed", "items": [{"target": "抖音任务", "messages": [],
+                                                  "ok": False, "error": detail}]}
+    return None
+
+
+def _qq_terminal(now: datetime, config: dict):
+    today = now.strftime("%Y-%m-%d")
+    data = _read_json(QQ_RESULT)
+    if isinstance(data, dict) and str(data.get("day") or _day(data.get("finished_at"))) == today:
+        items = []
+        for item in data.get("recipients", []):
+            if isinstance(item, dict):
+                target = str(item.get("target") or "")
+                name = str(item.get("name") or target or "未知好友")
+                label = f"{name}（QQ尾号 {target[-4:]}）" if target and name != target else f"QQ尾号 {target[-4:]}"
+                items.append({"target": label, "messages": [str(item.get("message") or "")],
+                              "ok": bool(item.get("confirmed")),
+                              "error": str(item.get("error") or "")})
+        if items:
+            stopped = data.get("session_stopped") is True
+            if not stopped:
+                items.append({"target": "QQ 会话收尾", "messages": [], "ok": False,
+                              "error": "发送后自动退出失败"})
+            return {"status": "success" if all(x["ok"] for x in items) else "failed", "items": items}
+    fallback = qq_result(config, now)
+    if fallback is None:
+        return None
+    status, detail = fallback
+    targets = [x.strip() for x in str(config.get("friendSpark_targets", "")).split(",") if x.strip()]
+    message = str(config.get("friendSpark_message") or "")
+    return {"status": "success" if status == "成功" else "failed",
+            "items": [{"target": f"QQ尾号 {target[-4:]}", "messages": [message],
+                       "ok": status == "成功", "error": "" if status == "成功" else detail}
+                      for target in targets] or
+                     [{"target": "QQ 任务", "messages": [], "ok": False, "error": detail}]}
+
+
+def _timeout(platform: str, now: datetime, config: dict):
+    due = _due(config, now)
+    if due and now >= due + timedelta(minutes=60):
+        return {"status": "failed", "items": [{"target": f"{platform} 任务", "messages": [],
+                                                  "ok": False, "error": "计划时间后 60 分钟仍无完成记录"}]}
+    return None
+
+
+def _truncate_utf8(value: str, limit: int = MAX_MESSAGE_BYTES) -> str:
+    encoded = value.encode("utf-8")
+    if len(encoded) <= limit:
+        return value
+    suffix = "\n…明细过长，已截断；完整结果请查看服务器私有日志"
+    budget = limit - len(suffix.encode("utf-8"))
+    return encoded[:budget].decode("utf-8", errors="ignore") + suffix
+
+
+def build_message(day: str, results: dict) -> str:
+    overall = "成功" if results and all(x.get("status") == "success" for x in results.values()) else "部分失败"
+    lines = [f"续火花每日任务汇总｜{day} 北京时间", f"总结果：{overall}"]
+    labels = {"douyin": "抖音", "qq": "QQ"}
+    for platform in ("douyin", "qq"):
+        if platform not in results:
+            continue
+        items = results[platform].get("items", [])
+        succeeded = sum(bool(item.get("ok")) for item in items)
+        lines.extend(["", f"{labels[platform]}：成功 {succeeded}/{len(items)}"])
+        for item in items:
+            lines.append(f"• {item.get('target', '未知目标')}")
+            messages = [x for x in item.get("messages", []) if x]
+            if messages:
+                lines.append("  发送内容：" + "\n  ".join(messages))
+            lines.append("  结果：" + ("已在聊天记录确认" if item.get("ok") else
+                                      (item.get("error") or "失败")))
+    return _truncate_utf8("\n".join(lines))
+
+
+def aggregate(destination, platform: str, now: datetime, exit_code: int | None = None) -> int:
+    platforms, douyin_config, qq_config = _enabled(platform)
+    day = now.strftime("%Y-%m-%d")
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with STATE_FILE.open("a+", encoding="utf-8") as state_file:
+    with STATE_FILE.open("a+", encoding="utf-8") as stream:
         os.chmod(STATE_FILE, 0o600)
-        fcntl.flock(state_file, fcntl.LOCK_EX)
-        state_file.seek(0)
+        if fcntl is not None:
+            fcntl.flock(stream, fcntl.LOCK_EX)
+        stream.seek(0)
         try:
-            state = json.load(state_file)
+            state = json.load(stream)
         except ValueError:
             state = {}
-        day = now.strftime("%Y-%m-%d")
+        days = state.setdefault("days", {})
+        current = days.setdefault(day, {"results": {}, "notified": False})
         if state.get("qq_notified_day") == day:
+            current["notified"] = True  # pre-0.13.10 already notified today
+        if current.get("notified"):
             return 0
-        message = f"续火花 QQ 每日任务{status}｜{day} 北京时间｜{detail}"
-        if not send(destination, message):
+        results = current.setdefault("results", {})
+        douyin = _douyin_terminal(now, exit_code if platform == "douyin" else None)
+        qq = _qq_terminal(now, qq_config)
+        if douyin:
+            results["douyin"] = douyin
+        elif "douyin" in platforms:
+            timeout = _timeout("抖音", now, douyin_config)
+            if timeout:
+                results["douyin"] = timeout
+        if qq:
+            results["qq"] = qq
+        elif "qq" in platforms:
+            timeout = _timeout("QQ", now, qq_config)
+            if timeout:
+                results["qq"] = timeout
+        if not platforms or any(name not in results for name in platforms):
+            _save_state(stream, state)
+            return 0
+        if not send(destination, build_message(day, {name: results[name] for name in platforms})):
+            _save_state(stream, state)
             return 1
-        state["qq_notified_day"] = day
-        state_file.seek(0)
-        state_file.truncate()
-        json.dump(state, state_file, ensure_ascii=False)
-        state_file.flush()
-        os.fsync(state_file.fileno())
+        current["notified"] = True
+        current["notified_at"] = now.isoformat()
+        _save_state(stream, state)
     return 0
+
+
+def _save_state(stream, value):
+    stream.seek(0)
+    stream.truncate()
+    json.dump(value, stream, ensure_ascii=False)
+    stream.flush()
+    os.fsync(stream.fileno())
 
 
 def main() -> int:
@@ -190,18 +323,12 @@ def main() -> int:
         if args.platform == "test":
             print("尚未配置企业微信通知链接", file=sys.stderr)
             return 2
-        return 0  # User declined optional WeCom setup.
-    now = datetime.now(BEIJING)
+        return 0
     if args.platform == "test":
         return 0 if send(destination, "续火花企业微信通知测试｜连接正常，不会触发续火花发送") else 1
-    if args.platform == "qq":
-        return notify_qq(destination, now)
-    if args.exit_code is None:
+    if args.platform == "douyin" and args.exit_code is None:
         parser.error("抖音通知需要 --exit-code")
-    status = "成功" if args.exit_code == 0 else "失败"
-    detail = "已执行完毕" if args.exit_code == 0 else f"退出码 {args.exit_code}，请检查 logs/cron.log"
-    message = f"续火花 抖音每日任务{status}｜{now:%Y-%m-%d %H:%M} 北京时间｜{detail}"
-    return 0 if send(destination, message) else 1
+    return aggregate(destination, args.platform, datetime.now(BEIJING), args.exit_code)
 
 
 if __name__ == "__main__":

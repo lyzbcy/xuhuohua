@@ -20,9 +20,22 @@ except ImportError:  # Windows tests; cloud runtime is Linux.
 SKILL = Path(__file__).resolve().parents[1]
 QQ_CONFIG = SKILL / "qq-data/config/plugins/napcat-plugin-auto-tasks/config.json"
 STATE = SKILL / "qq-run-state.json"
+RESULT = SKILL / "qq-result.json"
 BEIJING = timezone(timedelta(hours=8))
 COMPOSE = SKILL / "scripts/compose.qq.yaml"
 WEBUI_CONFIG = SKILL / "qq-data/config/webui.json"
+SIGNATURE = "——来自楼宇自动续火花"
+OLD_SIGNATURES = ("——来自捞鱼自动续火花",)
+
+
+def with_signature(message):
+    value = str(message).rstrip()
+    for old in OLD_SIGNATURES:
+        if value.endswith(old):
+            value = value[:-len(old)].rstrip()
+    if value.endswith(SIGNATURE):
+        return value
+    return value + "\n" + SIGNATURE
 
 
 def settings():
@@ -38,6 +51,7 @@ def settings():
     message = str(config.get("friendSpark_message", ""))
     if not message.strip():
         raise ValueError("QQ 话术为空")
+    message = with_signature(message)
     return config, when, targets, message
 
 
@@ -78,6 +92,79 @@ def check_login(address, token, own_account):
     data = onebot("get_login_info", {}, address, token)
     if str(data.get("user_id", "")) != own_account:
         raise RuntimeError("QQ 登录态未就绪")
+
+
+def friend_names(address, token):
+    try:
+        data = onebot("get_friend_list", {}, address, token)
+    except Exception:
+        return {}
+    if not isinstance(data, list):
+        return {}
+    return {
+        str(item.get("user_id")): str(item.get("remark") or item.get("nickname") or item.get("user_id"))
+        for item in data if isinstance(item, dict) and item.get("user_id")
+    }
+
+
+def _history_messages(data):
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict):
+        for key in ("messages", "message_list", "data"):
+            if isinstance(data.get(key), list):
+                return data[key]
+    return []
+
+
+def _message_text(item):
+    raw = item.get("raw_message")
+    if isinstance(raw, str):
+        return raw
+    message = item.get("message")
+    if isinstance(message, str):
+        return message
+    if isinstance(message, list):
+        parts = []
+        for segment in message:
+            if not isinstance(segment, dict):
+                continue
+            data = segment.get("data") or {}
+            if segment.get("type") == "text" and isinstance(data.get("text"), str):
+                parts.append(data["text"])
+        return "".join(parts)
+    return ""
+
+
+def history_confirms(data, message_id, own_account, expected_message):
+    for item in _history_messages(data):
+        if not isinstance(item, dict) or str(item.get("message_id", item.get("msgId", ""))) != str(message_id):
+            continue
+        sender = item.get("sender") if isinstance(item.get("sender"), dict) else {}
+        sender_id = str(sender.get("user_id", item.get("user_id", "")))
+        if sender_id and sender_id != str(own_account):
+            continue
+        if _message_text(item).strip() == expected_message.strip():
+            return True
+    return False
+
+
+def confirm_sent(target, message_id, own_account, expected_message, address, token,
+                 attempts=5, poll_seconds=1):
+    for attempt in range(attempts):
+        data = onebot("get_friend_msg_history", {"user_id": int(target), "count": 20}, address, token)
+        if history_confirms(data, message_id, own_account, expected_message):
+            return True
+        if attempt + 1 < attempts:
+            time.sleep(poll_seconds)
+    return False
+
+
+def save_result(value):
+    temp = RESULT.with_name(RESULT.name + ".tmp")
+    temp.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
+    os.chmod(temp, 0o600)
+    temp.replace(RESULT)
 
 
 def _compose(*args):
@@ -194,21 +281,33 @@ def run_due(now=None, dry_run=False, check_session=False):
         state = {"day": today, "startedAt": now.isoformat(), "done": False}
         _save(state_file, state)
         succeeded = failed = 0
+        recipients = []
         session_stopped = False
         try:
             start_container()
             address, token = wait_for_login(account)
+            names = friend_names(address, token)
             for target in targets:
                 try:
                     result = onebot("send_private_msg", {"user_id": int(target), "message": message}, address, token)
-                    if not result.get("message_id"):
+                    message_id = result.get("message_id")
+                    if not message_id:
                         raise RuntimeError("QQ 发送未返回消息编号")
+                    if not confirm_sent(target, message_id, account, message, address, token):
+                        raise RuntimeError("聊天记录未确认该消息，为避免重复不会自动重发")
                     succeeded += 1
+                    recipients.append({"target": target, "name": names.get(target, target),
+                                       "message": message, "confirmed": True, "error": None})
                 except Exception as exc:
                     failed += 1
+                    recipients.append({"target": target, "name": names.get(target, target),
+                                       "message": message, "confirmed": False, "error": str(exc)})
                     print(f"QQ 好友发送失败：{type(exc).__name__}", file=sys.stderr)
         except Exception as exc:
             failed = len(targets)
+            recipients = [{"target": target, "name": target, "message": message,
+                           "confirmed": False, "error": "QQ 自动登录或本机接口不可用"}
+                          for target in targets]
             print(f"QQ 自动登录或本机接口不可用：{type(exc).__name__}", file=sys.stderr)
         finally:
             try:
@@ -220,10 +319,18 @@ def run_due(now=None, dry_run=False, check_session=False):
                      sessionStopped=session_stopped,
                      endedAt=datetime.now(BEIJING).isoformat())
         _save(state_file, state)
+        save_result({
+            "platform": "qq", "day": today,
+            "finished_at": datetime.now(BEIJING).isoformat(),
+            "status": "success" if failed == 0 and session_stopped else "failed",
+            "session_stopped": session_stopped,
+            "recipients": recipients,
+        })
         stats = config.setdefault("stats", {})
         stats.update(friendSparkCompletedAt=int(datetime.now(BEIJING).timestamp() * 1000),
                      friendSparkSucceeded=succeeded, friendSparkFailed=failed,
                      friendSparkSessionStopped=session_stopped)
+        config["friendSpark_message"] = message
         temp = QQ_CONFIG.with_name(QQ_CONFIG.name + ".tmp")
         temp.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
         os.chmod(temp, 0o600)

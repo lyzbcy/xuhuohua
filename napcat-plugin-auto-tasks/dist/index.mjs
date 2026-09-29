@@ -307,17 +307,12 @@ class PluginState {
   }
   /** 好友火花发送需要把真实 API 异常交给批次统计。 */
   async callApiStrict(action, params) {
-    try {
-      return await this.ctx.actions.call(
-        action,
-        params,
-        this.ctx.adapterName,
-        this.ctx.pluginManager.config
-      );
-    } catch (e) {
-      if (String(e).includes("No data returned")) return;
-      throw e;
-    }
+    return await this.ctx.actions.call(
+      action,
+      params,
+      this.ctx.adapterName,
+      this.ctx.pluginManager.config
+    );
   }
   // ==================== 统计 ====================
   incrementProcessed() {

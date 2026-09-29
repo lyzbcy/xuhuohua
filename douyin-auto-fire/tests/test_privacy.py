@@ -1,6 +1,7 @@
 import io
 import json
 import logging
+import os
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
@@ -107,6 +108,20 @@ def test_write_results_json_is_redacted(tmp_path: Path) -> None:
     assert "好友02" in content
     assert "张三" not in content
     assert "李四" not in content
+    private = json.loads((tmp_path / "notification-result.json").read_text(encoding="utf-8"))
+    assert [item["target"] for item in private["results"]] == ["张三", "李四"]
+    if os.name != "nt":
+        assert oct((tmp_path / "notification-result.json").stat().st_mode & 0o777) == "0o600"
+
+
+def test_dry_run_does_not_replace_private_notification_result(tmp_path: Path) -> None:
+    import app.main as main_module
+
+    private = tmp_path / "notification-result.json"
+    private.write_text("existing", encoding="utf-8")
+    main_module._write_results(tmp_path, "daily-streak", True,
+                               [TargetResult(target="张三", status="success")], {"张三": "好友01"})
+    assert private.read_text(encoding="utf-8") == "existing"
 
 
 def test_screenshot_filename_uses_alias_not_real_name(tmp_path: Path) -> None:

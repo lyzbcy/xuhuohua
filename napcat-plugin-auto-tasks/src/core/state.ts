@@ -344,17 +344,12 @@ class PluginState {
 
     /** 好友火花发送需要把真实 API 异常交给批次统计。 */
     async callApiStrict(action: string, params: Record<string, unknown>): Promise<unknown> {
-        try {
-            return await this.ctx.actions.call(
-                action as 'send_msg',
-                params as never,
-                this.ctx.adapterName,
-                this.ctx.pluginManager.config
-            );
-        } catch (e: unknown) {
-            if (String(e).includes('No data returned')) return;
-            throw e;
-        }
+        return await this.ctx.actions.call(
+            action as 'send_msg',
+            params as never,
+            this.ctx.adapterName,
+            this.ctx.pluginManager.config
+        );
     }
 
     // ==================== 统计 ====================

@@ -139,24 +139,24 @@ SEND_STABLE_INTERVAL_MS = 500
 SEND_INITIAL_CLEAN_GRACE_MS = 2_000
 
 
-async def send_message(page: Page, chat: DouyinChat, message: Message, stickers: dict[str, Sticker]) -> None:
+async def send_message(page: Page, chat: DouyinChat, message: Message, stickers: dict[str, Sticker]) -> str:
     if message.type == "random":
-        await send_message(page, chat, random.choice(message.choices), stickers)
-        return
+        return await send_message(page, chat, random.choice(message.choices), stickers)
     if message.type == "text":
-        await send_text(chat, message.content or "")
-        return
+        content = message.content or ""
+        await send_text(chat, content)
+        return content
     if message.type == "image":
         if message.path is None:
             raise PageOperationError("图片消息缺少文件路径")
         await send_image(page, message.path.as_posix())
-        return
+        return f"图片：{message.path.name}"
     if message.type == "douyin_sticker":
         sticker = stickers.get(message.sticker or "")
         if sticker is None:
             raise PageOperationError(f"没有原生表情映射: {message.sticker}")
         await send_douyin_sticker(page, sticker)
-        return
+        return f"抖音表情：{sticker.name}"
     raise PageOperationError(f"不支持的消息类型: {message.type}")
 
 
