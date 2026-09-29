@@ -123,6 +123,10 @@ class ReleasePathTests(unittest.TestCase):
         self.assertIn("noVNC", value)
         self.assertIn("stop-douyin-desktop.sh", value)
         self.assertIn("虚拟桌面", value)
+        self.assertIn("qq-run.py --session-check", value)
+        self.assertIn("发送结束或失败都自动退出", value)
+        self.assertIn("不得用 watchdog 常驻 QQ", value)
+        self.assertLess(len(value), 2000)
 
     def test_copy_prompt_reads_latest_release_asset_and_rejects_old_asset(self):
         with patch.object(cloud.urllib.request, "urlopen",

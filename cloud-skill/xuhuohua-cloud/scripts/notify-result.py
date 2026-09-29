@@ -124,8 +124,10 @@ def qq_result(config: dict, now: datetime) -> tuple[str, str] | None:
     if completed_ms > 0:
         completed = datetime.fromtimestamp(completed_ms / 1000, BEIJING)
         if due <= completed <= now and succeeded + failed > 0:
-            status = "成功" if failed == 0 else "失败"
-            return status, f"成功 {succeeded}，失败 {failed}；详见 logs/qq-run.log"
+            session_stopped = stats.get("friendSparkSessionStopped") is not False
+            status = "成功" if failed == 0 and session_stopped else "失败"
+            cleanup = "已自动退出" if session_stopped else "自动退出失败"
+            return status, f"成功 {succeeded}，失败 {failed}；{cleanup}；详见 logs/qq-run.log"
     if now >= due + timedelta(minutes=60):
         return "失败", "计划时间后 60 分钟仍无整批完成记录，请检查登录态、容器和 QQ 调度日志"
     return None

@@ -5,7 +5,7 @@ description: 从续火花最新 GitHub Release 安装 Linux 云端 Skill，并�
 
 # 续火花云端部署
 
-适用于用户自己的 Linux x86_64 云服务器。包内 `douyin-auto-fire/` 与 QQ OneBot 定时脚本是执行程序；本 Skill 是 Agent 的部署指南。只用本地话术，不调用 LLM API 生成消息。服务器需要持续开机联网。
+适用于用户自己的 Linux x86_64 云服务器。包内 `douyin-auto-fire/` 与 QQ OneBot 定时脚本是执行程序；本 Skill 是 Agent 的部署指南。只用本地话术，不调用 LLM API 生成消息。服务器需要持续开机联网。QQ 采用“到点借号”：任务时间才启动并登录，结束后退出，平时不占用账号。
 
 ## 1. 获取并安装最新 Release Skill
 
@@ -20,7 +20,7 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 **每次使用本 Skill 的第一步**：在已安装的 Agent Skill 目录执行 `bash xuhuohua-cloud/check-update.sh`，然后立即继续当前工作，不等待更新。脚本每天北京时间首次使用时在后台静默检查最新 Release；失败继续用旧版，下次使用再重试。初次安装尚未有该文件时跳过此步，按本节先安装。
 
-**从旧版首次升级**：旧版没有更新入口，需在任务空闲时手动校验最新云端 ZIP，把包内公共文件覆盖到**原解压目录**，保留 `qq-data/`、`douyin-auto-fire/config.json`、`storage-state.json`、`notify-webhook` 等私有文件，再重跑 `install-skill.sh`。QQ 从插件调度迁移时，重跑 `install-qq.sh` 注册新的 OneBot cron；已有登录态仍需通过重启验收，不做真实补发。
+**从旧版首次升级**：旧版没有更新入口，需在任务空闲时手动校验最新云端 ZIP，把包内公共文件覆盖到**原解压目录**，保留 `qq-data/`、`douyin-auto-fire/config.json`、`storage-state.json`、`notify-webhook` 等私有文件，再重跑 `install-skill.sh`。QQ 升级后必须重跑 `install-qq.sh`，让 Compose 改为按需启动并删除旧 watchdog cron；已有登录态用 `qq-run.py --session-check` 验收，不做真实补发。
 
 ## 2. 先问用户
 
@@ -28,10 +28,12 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 ## 3. QQ 登录与定时
 
-1. 检查 Docker Engine、Compose v2、Python 3 和 crontab。运行 `bash xuhuohua-cloud/scripts/install-qq.sh`。它部署固定版本 `mlikiowa/napcat-docker:v4.18.19`，将旧版被白名单拒载的插件移入私有备份目录，固定容器 MAC 与主机名，并注册 QQ 本机 cron；已有好友配置不会被覆盖。容器路径以 [NapCat Docker 官方文档](https://github.com/NapNeko/NapCat-Docker) 为准。
+1. 检查 Docker Engine、Compose v2、Python 3 和 crontab。运行 `bash xuhuohua-cloud/scripts/install-qq.sh`。它部署固定版本 `mlikiowa/napcat-docker:v4.18.19`，将旧版被白名单拒载的插件移入私有备份目录，固定容器 MAC 与主机名，删除旧版常驻 watchdog，并注册 QQ 本机 cron；已有好友配置不会被覆盖。容器路径以 [NapCat Docker 官方文档](https://github.com/NapNeko/NapCat-Docker) 为准。
 2. 默认运行 `bash xuhuohua-cloud/scripts/qq-login-page.sh start`，给用户 `ssh -L 6100:127.0.0.1:6100 用户@服务器` 和浏览器链接 `http://127.0.0.1:6100/`。这是只监听服务器本机、每 2 秒读取最新二维码的页面；过期会提示在 WebUI 刷新，**不要反复发送静态二维码截图**。需要管理 NapCat 时另建 `ssh -L 6099:127.0.0.1:6099 用户@服务器`，打开 `http://127.0.0.1:6099/webui`。两个端口都不能公开到公网；不要把 WebUI Token 发给他人。
-3. 用户扫码并在手机上授权后，先在 WebUI 确认账号已登录，检查 `/app/.config/QQ` 是否挂载到原有 `qq-data/QQ` 且已落盘。询问目标 QQ 号和一条本地话术，运行 `python3 xuhuohua-cloud/scripts/configure-qq.py --time HH:MM --targets QQ号1,QQ号2 --message '话术'`；再运行 `python3 xuhuohua-cloud/scripts/configure-onebot.py` 写入私有 OneBot 令牌；两者均不会发消息。**重启容器后再次运行 `verify-qq.sh` 确认同一账号仍已登录**。若重新要求扫码，先检查设备标识是否固定、挂载目录、属主/权限、QQ 设备信任，以及同账号桌面 QQ 是否再次登录并顶号；解决并重做重启验证，不要宣称成功。验证完成后运行 `bash xuhuohua-cloud/scripts/qq-login-page.sh stop` 关闭临时页面。
-4. QQ 的 cron 每分钟核对北京时间，只有到配置分钟且当天尚未执行时通过容器网络中的带令牌 OneBot HTTP 接口发送；每 5 分钟的 watchdog 负责拉起停止的容器，另有每分钟一次的结果通知检查。OneBot 不发布公网端口。QQ 掉线时需重新扫码；若错过时间，不自动补发。整批完成或超时后每个北京时间日期最多报告一次。不要叠加其他 QQ 发送 cron。
+3. 用户扫码并在手机上授权后，先在 WebUI 确认账号已登录，检查 `/app/.config/QQ` 是否挂载到原有 `qq-data/QQ` 且已落盘。询问目标 QQ 号和一条本地话术，运行 `python3 xuhuohua-cloud/scripts/configure-qq.py --time HH:MM --targets QQ号1,QQ号2 --message '话术'`；再运行 `python3 xuhuohua-cloud/scripts/configure-onebot.py` 写入私有 OneBot 令牌；两者均不会发消息。**重启容器后再次运行 `verify-qq.sh` 确认同一账号仍已登录**。若重新要求扫码，先检查固定设备标识、挂载目录、权限和 QQ 设备信任；解决并重做重启验证，不要宣称成功。
+4. 关闭临时页面：`bash xuhuohua-cloud/scripts/qq-login-page.sh stop`。随后运行 `python3 xuhuohua-cloud/scripts/qq-run.py --session-check`，它必须完成“启动容器 → 自动登录 → OneBot 真登录验证 → 停止容器”，全程不发消息。确认 `docker inspect -f '{{.State.Running}}' xuhuohua-napcat` 输出 `false` 后，才算 QQ 部署通过。
+5. QQ cron 每分钟核对北京时间，仅在配置分钟且当天尚未执行时工作。执行顺序固定为：启动 NapCat → 等待自动登录 → 未上线时通过本机 WebUI `/SetQuickLogin` 主动快登 → 验证 OneBot 账号 → 发送整批 → 无论成功、部分失败或异常都在 `finally` 中停止容器。停止容器会释放 QQ 在线会话并保留下次快登凭证；不要调用会清除设备信任的账号注销。平时不得启动 watchdog 或保持容器常驻。
+6. 如果同账号在本机登录并把云端顶下线，无需立即处理；到点脚本会重新快登，可能把本机会话顶下线，发送后再释放。若 QQ 风控使快登凭证失效，任务应失败并通知用户重新扫码，不能绕过安全验证。若错过时间，不自动补发。不要叠加其他 QQ 发送 cron。
 
 ## 4. 抖音虚拟桌面登录与定时
 
@@ -46,12 +48,12 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 运行 `python3 xuhuohua-cloud/scripts/notify-result.py test`，确认目标企业微信群收到了测试消息，才向用户报告通知已启用。脚本仅向 `https://qyapi.weixin.qq.com/cgi-bin/webhook/send` 发送文本消息并检查接口错误码。旧版的私有 `notify-command` 适配命令仍兼容，但新安装优先使用 webhook；如果两者都有，以 `notify-webhook` 为准。
 
-启用后，抖音每日 cron 在实际运行结束时按退出码发**一条**成功或失败通知；QQ 只读检查读取本机 cron 的整批成功/失败记录，整批结束后发**一条**，到点后 60 分钟无完成记录则发失败通知。消息只含平台、结果、北京时间和简要数量/错误提示，不带好友名单与凭证。发送失败记录在 `logs/cron.log` 或 `logs/qq-result.log`，不改变续火花任务本身的结果。没有通知配置时两个平台照常运行，不发通知；不应把测试发送当成续火花任务。
+启用后，抖音每日 cron 在实际运行结束时按退出码发**一条**成功或失败通知；QQ 根据本机 cron 的整批结果发**一条**，消息发送成功但自动退出失败也按失败通知，到点后 60 分钟无完成记录同样报告失败。消息只含平台、结果、北京时间和简要数量/错误提示，不带好友名单与凭证。发送失败记录在 `logs/cron.log` 或 `logs/qq-result.log`，不改变续火花任务本身的结果。没有通知配置时两个平台照常运行，不发通知；不应把测试发送当成续火花任务。
 
 ## 6. Skill 静默更新
 
-`check-update.sh` 在每天北京时间首次使用时立即后台运行，当前任务继续使用已加载版本。后台 updater 对照本地 `VERSION` 与 GitHub 最新正式 Release，下载云端包和 SHA-256 校验文件，只原子替换 Skill 说明与包内脚本，最后更新版本号；失败保留旧版本并在下次使用重试。日志在已安装 Skill 目录的 `.update.log`。`notify-webhook`、`notify-command`、QQ 登录态、抖音 Cookie、好友配置、定时任务及正在运行的任务均不覆盖。新版 QQ cron 需在任务空闲时重跑 `install-qq.sh` 完成迁移；静默更新本身不修改运行中的容器。
+`check-update.sh` 在每天北京时间首次使用时立即后台运行，当前任务继续使用已加载版本。后台 updater 对照本地 `VERSION` 与 GitHub 最新正式 Release，下载云端包和 SHA-256 校验文件，只原子替换 Skill 说明与包内脚本，最后更新版本号；失败保留旧版本并在下次使用重试。日志在已安装 Skill 目录的 `.update.log`。`notify-webhook`、`notify-command`、QQ 登录态、抖音 Cookie、好友配置、定时任务及正在运行的任务均不覆盖。涉及 QQ Compose 或 cron 规范变化时，必须在任务空闲时重跑 `install-qq.sh`；静默更新不会擅自重建运行中的容器。
 
 ## 7. 完成检查
 
-报告已启用的平台、北京时间、扫码/登录验证结果、QQ 容器和 cron、抖音 cron、企业微信通知是否启用及日志路径。QQ 可看 `docker logs xuhuohua-napcat`、`logs/qq-watchdog.log`、`logs/qq-run.log` 与 `logs/qq-result.log`；抖音可看 `logs/cron.log` 与 `douyin-auto-fire/artifacts/run.log`。**不要在聊天或公开仓库展示 Cookie、Token、登录态、配置全文或二维码以外的私有数据。**只在用户已经配置并明确启用后等待每日定时；首次设置与验证阶段不真实发送。
+报告已启用的平台、北京时间、扫码/登录验证结果、QQ `--session-check` 自动登录与退出结果、cron、抖音 cron、企业微信通知是否启用及日志路径。QQ 可看 `docker logs xuhuohua-napcat`、`logs/qq-run.log` 与 `logs/qq-result.log`；完成时 QQ 容器应为停止状态。抖音可看 `logs/cron.log` 与 `douyin-auto-fire/artifacts/run.log`。**不要在聊天或公开仓库展示 Cookie、Token、登录态、配置全文或二维码以外的私有数据。**只在用户已经配置并明确启用后等待每日定时；首次设置与验证阶段不真实发送。

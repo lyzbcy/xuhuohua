@@ -82,11 +82,9 @@ path.chmod(0o600)
 PY
 docker compose -f "$skill/scripts/compose.qq.yaml" --project-directory "$skill" up -d
 
-watchdog="$skill/scripts/qq-watchdog.sh"
-tag="# xuhuohua-cloud-qq-watchdog"
-entry="*/5 * * * * /bin/bash '$watchdog' >> '$here/logs/qq-watchdog.log' 2>&1 $tag"
+# 删除旧版常驻拉起规则。QQ 从本版起只在任务时间内登录。
 existing="$(crontab -l 2>/dev/null || true)"
-printf '%s\n' "$existing" | sed '/# xuhuohua-cloud-qq-watchdog$/d' | { cat; printf '%s\n' "$entry"; } | crontab -
+printf '%s\n' "$existing" | sed '/# xuhuohua-cloud-qq-watchdog$/d' | crontab -
 notify_tag="# xuhuohua-cloud-qq-result"
 notify_entry="* * * * * $(command -v python3) '$skill/scripts/notify-result.py' qq >> '$here/logs/qq-result.log' 2>&1 $notify_tag"
 existing="$(crontab -l 2>/dev/null || true)"
@@ -95,6 +93,7 @@ run_tag="# xuhuohua-cloud-qq-send"
 run_entry="* * * * * $(command -v python3) '$skill/scripts/qq-run.py' >> '$here/logs/qq-run.log' 2>&1 $run_tag"
 existing="$(crontab -l 2>/dev/null || true)"
 printf '%s\n' "$existing" | sed '/# xuhuohua-cloud-qq-send$/d' | { cat; printf '%s\n' "$run_entry"; } | crontab -
-echo "NapCat 已启动；cron 每分钟核对 QQ 设定时间，仅到点且当日未运行时发送。"
+echo "NapCat 已启动供首次扫码；完成登录验收后应停止容器。"
+echo "cron 每分钟核对 QQ 设定时间：到点启动容器、自动快登、发送并退出。"
 echo "WebUI 仅监听服务器 127.0.0.1:6099；请通过 SSH 隧道访问并扫码。"
-echo "扫码后运行 configure-onebot.py 并重启容器，再执行 verify-qq.sh。"
+echo "扫码后运行 configure-onebot.py 并重启容器，执行 verify-qq.sh，再用 qq-run.py --session-check 验收自动收摊。"

@@ -43,6 +43,16 @@ class CloudNotifyTests(unittest.TestCase):
         self.assertIsNone(notify.qq_result(self.config, self.due + timedelta(minutes=59)))
         self.assertEqual(notify.qq_result(self.config, self.due + timedelta(minutes=60))[0], "失败")
 
+    def test_qq_cleanup_failure_is_reported_as_failure(self):
+        self.config["stats"] = {
+            "friendSparkCompletedAt": int((self.due + timedelta(seconds=20)).timestamp() * 1000),
+            "friendSparkSucceeded": 1, "friendSparkFailed": 0,
+            "friendSparkSessionStopped": False,
+        }
+        status, detail = notify.qq_result(self.config, self.due + timedelta(minutes=1))
+        self.assertEqual(status, "失败")
+        self.assertIn("自动退出失败", detail)
+
     def test_disabled_qq_is_not_reported(self):
         self.config["friendSpark_enable"] = False
         self.assertIsNone(notify.qq_result(self.config, self.due + timedelta(hours=2)))

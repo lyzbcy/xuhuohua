@@ -4,7 +4,7 @@ services:
     container_name: xuhuohua-napcat
     hostname: ${NAPCAT_HOSTNAME}
     mac_address: ${NAPCAT_MAC_ADDRESS}
-    restart: always
+    restart: "no"
     environment:
       NAPCAT_UID: ${NAPCAT_UID}
       NAPCAT_GID: ${NAPCAT_GID}

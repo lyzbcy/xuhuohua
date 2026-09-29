@@ -66,7 +66,9 @@ def check(path: Path) -> None:
             or "企业微信群机器人 webhook" not in deployment_prompt
             or "check-update.sh" not in deployment_prompt
             or "noVNC" not in deployment_prompt
-            or "qq-login-page.sh" not in deployment_prompt):
+            or "qq-login-page.sh" not in deployment_prompt
+            or "qq-run.py --session-check" not in deployment_prompt
+            or "不得用 watchdog 常驻 QQ" not in deployment_prompt):
         raise SystemExit("Release Prompt 缺少下载或引导步骤")
     print(f"CLOUD_PACKAGE_OK files={len(names)} sha256={actual}")
 

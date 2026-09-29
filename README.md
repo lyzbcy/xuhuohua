@@ -36,7 +36,7 @@
 
 当前正式分发仅支持 Windows x64。macOS 版尚未完成引擎和定时任务适配，不提供下载。
 
-Linux x86_64 云服务器在设置页点击复制时，桌面版实时读取[最新 Release](https://github.com/lyzbcy/xuhuohua/releases/latest)的 `xuhuohua-cloud-prompt.txt`；若资产尚未发布会明确提示。云端 Agent 按 Prompt 下载并校验 `xuhuohua-cloud.zip`，安装其中的 Skill，询问是否开启 QQ、抖音及各自时间，并建议可选配置企业微信群机器人 webhook 接收每次任务的成功或失败通知。QQ 默认通过 SSH 隧道提供自动刷新的二维码网页，扫码后重启容器确认登录态保留；抖音默认通过 noVNC 浏览器链接让用户自行扫码和做人脸验证，确认后关闭临时桌面。登录后先演练，再注册每日任务。Skill 每天北京时间首次使用时在后台检查最新 Release 并静默更新说明与脚本，失败沿用旧版。离线导出包仍可选，Release 包和本地导出都不包含凭证。详见包内 `xuhuohua-cloud/SKILL.md`。
+Linux x86_64 云服务器在设置页点击复制时，桌面版实时读取[最新 Release](https://github.com/lyzbcy/xuhuohua/releases/latest)的 `xuhuohua-cloud-prompt.txt`；Prompt 只负责可信下载入口和关键约束，详细步骤统一由包内 Skill 维护。云端 Agent 校验并安装 `xuhuohua-cloud.zip` 后，询问是否开启 QQ、抖音及各自时间，并建议可选配置企业微信群机器人 webhook。QQ 首次登录通过 SSH 隧道提供自动刷新的二维码网页；正式任务到点才启动 NapCat，被顶下线时主动快登，发送结束或异常后停止容器释放账号。抖音默认通过 noVNC 浏览器链接让用户自行扫码和做人脸验证，确认后关闭临时桌面，定时任务无头运行。Skill 每天北京时间首次使用时在后台检查最新 Release 并静默更新说明与脚本，失败沿用旧版。离线导出包仍可选，Release 包和本地导出都不包含凭证。详见包内 `xuhuohua-cloud/SKILL.md`。
 
 ## 从源码运行（新机器）
 

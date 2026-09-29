@@ -1,11 +1,13 @@
 """Send the configured QQ friend message once per Beijing day through local OneBot HTTP."""
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -19,6 +21,8 @@ SKILL = Path(__file__).resolve().parents[1]
 QQ_CONFIG = SKILL / "qq-data/config/plugins/napcat-plugin-auto-tasks/config.json"
 STATE = SKILL / "qq-run-state.json"
 BEIJING = timezone(timedelta(hours=8))
+COMPOSE = SKILL / "scripts/compose.qq.yaml"
+WEBUI_CONFIG = SKILL / "qq-data/config/webui.json"
 
 
 def settings():
@@ -76,13 +80,92 @@ def check_login(address, token, own_account):
         raise RuntimeError("QQ 登录态未就绪")
 
 
-def run_due(now=None, dry_run=False):
+def _compose(*args):
+    return subprocess.run(
+        ["docker", "compose", "-f", str(COMPOSE), "--project-directory", str(SKILL), *args],
+        capture_output=True, text=True, check=True, timeout=90)
+
+
+def start_container():
+    """Start the QQ engine only for the current scheduled session."""
+    _compose("up", "-d", "napcat")
+
+
+def stop_container():
+    """Release the QQ session while preserving its quick-login data."""
+    _compose("stop", "-t", "20", "napcat")
+
+
+def webui_quick_login(account):
+    """Trigger NapCat's real quick-login action through the loopback WebUI."""
+    try:
+        webui = json.loads(WEBUI_CONFIG.read_text(encoding="utf-8"))
+        port = int(webui.get("port") or 6099)
+        token = str(webui.get("token") or "")
+        if not token or not account.isdigit():
+            return False
+        digest = hashlib.sha256((token + ".napcat").encode("utf-8")).hexdigest()
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/auth/login",
+            data=json.dumps({"hash": digest}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}, method="POST")
+        with urllib.request.urlopen(request, timeout=8) as response:
+            credential = (json.load(response).get("data") or {}).get("Credential")
+        if not credential:
+            return False
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/QQLogin/SetQuickLogin",
+            data=json.dumps({"uin": int(account)}).encode("utf-8"),
+            headers={"Content-Type": "application/json",
+                     "Authorization": "Bearer " + credential}, method="POST")
+        with urllib.request.urlopen(request, timeout=15) as response:
+            return json.load(response).get("code") == 0
+    except Exception:
+        return False
+
+
+def wait_for_login(account, timeout=90, poll_seconds=2):
+    """Wait for auto-login, then actively retry quick login when needed."""
+    deadline = time.monotonic() + timeout
+    next_quick_login = time.monotonic() + 10
+    last_error = None
+    while time.monotonic() < deadline:
+        try:
+            address, token = endpoint()
+            check_login(address, token, account)
+            return address, token
+        except Exception as exc:
+            last_error = exc
+        if time.monotonic() >= next_quick_login:
+            webui_quick_login(account)
+            next_quick_login = time.monotonic() + 20
+        time.sleep(poll_seconds)
+    raise RuntimeError("QQ 自动快速登录超时") from last_error
+
+
+def session_check(account):
+    """Exercise start/login/stop without sending or touching daily state."""
+    stopped = False
+    try:
+        start_container()
+        wait_for_login(account)
+        return "session-ready"
+    finally:
+        try:
+            stop_container()
+            stopped = True
+        finally:
+            if stopped:
+                print("QQ 会话自检通过：已自动登录并退出；未发送消息")
+
+
+def run_due(now=None, dry_run=False, check_session=False):
     now = now or datetime.now(BEIJING)
     loaded = settings()
     if loaded is None:
         return "disabled"
     config, when, targets, message = loaded
-    if not dry_run and now.strftime("%H:%M") != when[:5]:
+    if not dry_run and not check_session and now.strftime("%H:%M") != when[:5]:
         return "not-due"
     own = next((SKILL / "qq-data/config").glob("onebot11_*.json"), None)
     if own is None:
@@ -92,6 +175,8 @@ def run_due(now=None, dry_run=False):
         address, token = endpoint()
         check_login(address, token, account)
         return f"ready:{len(targets)}"
+    if check_session:
+        return session_check(account)
     if fcntl is None:
         raise RuntimeError("QQ 定时运行仅支持 Linux")
     STATE.parent.mkdir(parents=True, exist_ok=True)
@@ -109,9 +194,10 @@ def run_due(now=None, dry_run=False):
         state = {"day": today, "startedAt": now.isoformat(), "done": False}
         _save(state_file, state)
         succeeded = failed = 0
+        session_stopped = False
         try:
-            address, token = endpoint()
-            check_login(address, token, account)
+            start_container()
+            address, token = wait_for_login(account)
             for target in targets:
                 try:
                     result = onebot("send_private_msg", {"user_id": int(target), "message": message}, address, token)
@@ -123,18 +209,28 @@ def run_due(now=None, dry_run=False):
                     print(f"QQ 好友发送失败：{type(exc).__name__}", file=sys.stderr)
         except Exception as exc:
             failed = len(targets)
-            print(f"QQ 登录或本机接口不可用：{type(exc).__name__}", file=sys.stderr)
-        state.update(done=True, succeeded=succeeded, failed=failed, endedAt=datetime.now(BEIJING).isoformat())
+            print(f"QQ 自动登录或本机接口不可用：{type(exc).__name__}", file=sys.stderr)
+        finally:
+            try:
+                stop_container()
+                session_stopped = True
+            except Exception as exc:
+                print(f"QQ 任务后自动退出失败：{type(exc).__name__}", file=sys.stderr)
+        state.update(done=True, succeeded=succeeded, failed=failed,
+                     sessionStopped=session_stopped,
+                     endedAt=datetime.now(BEIJING).isoformat())
         _save(state_file, state)
         stats = config.setdefault("stats", {})
         stats.update(friendSparkCompletedAt=int(datetime.now(BEIJING).timestamp() * 1000),
-                     friendSparkSucceeded=succeeded, friendSparkFailed=failed)
+                     friendSparkSucceeded=succeeded, friendSparkFailed=failed,
+                     friendSparkSessionStopped=session_stopped)
         temp = QQ_CONFIG.with_name(QQ_CONFIG.name + ".tmp")
         temp.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
         os.chmod(temp, 0o600)
         temp.replace(QQ_CONFIG)
-        print(f"QQ 每日任务完成：成功 {succeeded}，失败 {failed}")
-        return "ok" if failed == 0 else "failed"
+        cleanup = "已退出" if session_stopped else "退出失败"
+        print(f"QQ 每日任务完成：成功 {succeeded}，失败 {failed}；{cleanup}")
+        return "ok" if failed == 0 and session_stopped else "failed"
 
 
 def _save(stream, value):
@@ -147,10 +243,13 @@ def _save(stream, value):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dry-run", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true")
+    mode.add_argument("--session-check", action="store_true",
+                      help="启动、自动快登并退出，不发送消息")
     args = parser.parse_args()
     try:
-        result = run_due(dry_run=args.dry_run)
+        result = run_due(dry_run=args.dry_run, check_session=args.session_check)
     except Exception as exc:
         print(f"QQ 检查失败：{type(exc).__name__}: {exc}", file=sys.stderr)
         return 1
