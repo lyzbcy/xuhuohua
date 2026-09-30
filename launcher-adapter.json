@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "xuhuohua",
+  "name": "自动续火花",
+  "version": "0.14.0",
+  "platform": "win32",
+  "architecture": "x64",
+  "executable": "xuhuohua.exe",
+  "category": "桌面效率",
+  "summary": "集中管理续火花任务，让日常互动更轻松。",
+  "siteUrl": "https://lyzbcy.github.io/xuhuohua/",
+  "iconPath": "software/ui/assets/icon.ico",
+  "videoIds": [],
+  "package": {
+    "type": "portable-zip",
+    "path": "xuhuohua-windows-x64.zip",
+    "url": "https://github.com/lyzbcy/xuhuohua/releases/download/v0.14.0/xuhuohua-windows-x64.zip",
+    "sha256": "1351a69ed3ccb6cf81d55cfdd35aa3779f27165683c7bb5f0209d304b72a3dee",
+    "sizeBytes": 22025228
+  },
+  "installation": {
+    "displayName": "续火花控制台"
+  }
+}
