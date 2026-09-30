@@ -198,6 +198,15 @@ class Api:
     def schedule_repair(self):
         return scheduler.repair_all()
 
+    def schedule_list(self):
+        return scheduler.registered_tasks()
+
+    def schedule_delete_selected(self, names):
+        return scheduler.remove_tasks(names)
+
+    def schedule_restore(self, name):
+        return scheduler.restore_task(name)
+
     def cloud_skill_export(self):
         return cloud.export_bundle()
 

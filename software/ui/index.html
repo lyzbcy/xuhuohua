@@ -36,7 +36,7 @@
     <section class="page active" id="page-dashboard">
       <h2>仪表盘</h2>
       <div class="notice-banner" role="note"><strong>📢 自动续火花须知</strong><br>
-        注册定时任务后，软件到点可以关闭，但电脑须开机联网、保持 Windows 已登录且不休眠。杀毒软件可能拦截任务；控制台与独立自检任务会检查并恢复丢失的计划任务。若程序或脚本被隔离，需在杀毒软件里手动添加信任。
+        注册定时任务后，软件到点可以关闭，但电脑须开机联网、保持 Windows 已登录且不休眠。杀毒软件可能拦截任务；控制台与独立自检任务会检查并恢复异常丢失的计划任务，首页主动删除的任务不会自动恢复。若程序或脚本被隔离，需在杀毒软件里手动添加信任。
       </div>
       <div class="cards">
         <div class="card" id="card-douyin">
@@ -60,6 +60,17 @@
         <button class="btn primary" id="dash-qq-send">🔥 立即续火花（QQ）</button>
         <button class="btn" id="dash-dryrun">🧪 抖音演练（不真发）</button>
         <button class="btn" id="dash-qq-start">🐧 启动 QQ</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">已注册的定时任务</div>
+        <div id="dash-tasks" aria-live="polite">正在读取 Windows 任务计划…</div>
+        <div class="btn-row">
+          <button class="btn" id="dash-tasks-refresh">刷新任务</button>
+          <button class="btn danger" id="dash-tasks-delete" disabled>删除所选任务</button>
+          <span id="dash-tasks-note" class="hint"></span>
+        </div>
+        <div id="dash-tasks-disabled"></div>
+        <p class="hint">只显示本软件注册的 Windows 任务。手动删除后，自检不会重新创建；可点击恢复重新启用。QQ 发送时间由 QQ 配置管理，删除 QQ 自动启动任务会停止每天自动拉起引擎。</p>
       </div>
       <div class="panel">
         <div class="panel-title">每日计划（到点自动执行）</div>

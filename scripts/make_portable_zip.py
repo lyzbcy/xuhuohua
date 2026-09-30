@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """组装 Windows 便携分发包（小白版）：
 xuhuohua.exe + ①一键安装引擎.bat + NapCat(QQ引擎) + 抖音引擎源码 + 使用说明。
-产出：xuhuohua-windows-x64.zip（顶层目录：续火花控制台/）
+产出：xuhuohua-windows-x64.zip（主程序位于 ZIP 根目录）
 """
 import os
 import shutil
@@ -61,7 +61,7 @@ def main():
     shutil.copy2(ROOT / "README.md", PKG / "README.md")
     shutil.copy2(ROOT / "VERSION", PKG / "VERSION")
 
-    # 打包（arcname 以 续火花控制台/ 开头）
+    # 启动器自动准备要求主程序位于 ZIP 根目录。
     if OUT.exists():
         OUT.unlink()
     total = 0
@@ -69,7 +69,7 @@ def main():
         for root, dirs, files in os.walk(PKG):
             for f in sorted(files):
                 fp = Path(root) / f
-                z.write(fp, Path("续火花控制台") / fp.relative_to(PKG))
+                z.write(fp, fp.relative_to(PKG))
                 total += 1
     print(f"ZIP_OK {OUT.name} {OUT.stat().st_size/1048576:.1f} MB "
           f"app={n1} napcat={n2} douyin={n3} total={total}")

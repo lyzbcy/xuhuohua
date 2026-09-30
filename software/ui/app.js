@@ -18,6 +18,8 @@ let poolDirty = { texts: [], stickerFiles: [] };
 let poolSnapshot = "";
 let petKind = null;
 let petStarted = 0;
+let tasksLoading = false;
+let tasksData = null;
 
 window.showSparkPet = (kind) => {
   petKind = kind;
@@ -71,7 +73,7 @@ async function call(method, ...args) {
 async function withBtn(btn, fn) {
   if (!btn || btn.disabled) return;
   btn.disabled = true;
-  try { await fn(); } finally { btn.disabled = false; }
+  try { await fn(); } finally { btn.disabled = false; if (btn.id === "dash-tasks-delete") updateTaskDeleteButton(); }
 }
 function normTime(v, fallback) {
   if (!v) return fallback;
@@ -114,7 +116,7 @@ $$(".nav-item").forEach(btn => btn.addEventListener("click", async () => {
 /* ---------- 轮询 ---------- */
 async function pollState() {
   if (!apiReady) return;
-  try { state = await call("get_state"); renderState(); renderPlan(); } catch (e) { }
+  try { state = await call("get_state"); renderState(); renderPlan(); if (!tasksData) loadRegisteredTasks(); } catch (e) { }
 }
 async function pollEvents() {
   if (!apiReady) return;
@@ -146,6 +148,7 @@ async function pollQr() {
 }
 setInterval(pollEvents, 1600);
 setInterval(pollState, 3200);
+setInterval(() => { if (currentPage === "dashboard") loadRegisteredTasks(); }, 15000);
 setInterval(pollQr, 4000);
 setInterval(() => { $("#statusbar-time").textContent = new Date().toLocaleTimeString("zh-CN"); }, 1000);
 
@@ -209,12 +212,56 @@ function renderPlan() {
   const qqT = state.qq.send_time || "10:00:00";
   const items = [
     ["🎵 抖音发送", state.schedule && state.schedule.exists ? "每天 " + (dyTime || "") + "（下次 " + dyNext + "）" : "未注册定时，去「定时」页开启"],
-    ["🐧 QQ 发送", "每天 " + qqT],
+    ["🐧 QQ 发送", "配置时间：每天 " + qqT + (tasksData && !tasksData.tasks.some(t => t.name === "续火花-QQ启动") ? "（自动启动任务未注册）" : "")],
     ["🔄 话术轮换", state.rotate && state.rotate.exists ? "每天 00:05 自动换一条新话术" : "未启用"],
     ["🔍 更新检查", "每次打开软件时静默检查（手动在「关于」页）"],
   ];
   el.innerHTML = items.map(([k, v]) => `<div class="plan-item"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
 }
+
+async function loadRegisteredTasks() {
+  if (!apiReady || tasksLoading) return;
+  tasksLoading = true;
+  const selected = new Set($$(".task-select:checked").map(e => e.value));
+  try {
+    tasksData = await call("schedule_list");
+    $("#dash-tasks").innerHTML = tasksData.tasks.length ? tasksData.tasks.map(t => `
+      <label class="registered-task"><input class="task-select" type="checkbox" value="${esc(t.name)}" ${selected.has(t.name) ? "checked" : ""}>
+        <span><strong>${esc(t.title)}</strong><small>${esc(t.name)} · ${esc(t.state || "已注册")}</small>
+        <small>下次运行：${esc(t.next_run || "系统未提供")} · 上次结果：${esc(t.last_result || "暂无")}</small></span></label>`).join("")
+      : '<p class="hint">当前没有注册本软件的 Windows 定时任务。</p>';
+    $("#dash-tasks-disabled").innerHTML = (tasksData.disabled || []).map(t => `
+      <div class="task-disabled"><span>${esc(t.title)}：已手动删除</span><button class="btn small" data-restore-task="${esc(t.name)}">恢复任务</button></div>`).join("");
+    updateTaskDeleteButton();
+    renderPlan();
+  } catch (err) { $("#dash-tasks-note").textContent = "读取任务失败：" + err.message; }
+  finally { tasksLoading = false; }
+}
+function updateTaskDeleteButton() {
+  $("#dash-tasks-delete").disabled = $$(".task-select:checked").length === 0;
+}
+$("#dash-tasks").addEventListener("change", updateTaskDeleteButton);
+$("#dash-tasks-refresh").addEventListener("click", e => withBtn(e.target, loadRegisteredTasks));
+$("#dash-tasks-delete").addEventListener("click", e => withBtn(e.target, async () => {
+  const names = $$(".task-select:checked").map(input => input.value);
+  if (!names.length || !confirm("删除以下任务？删除后不会被自检自动恢复。\n\n" + names.join("\n"))) return;
+  try {
+    const result = await call("schedule_delete_selected", names);
+    $("#dash-tasks-note").textContent = result.msg;
+    await loadRegisteredTasks(); await pollState();
+  } catch (err) { $("#dash-tasks-note").textContent = "删除失败：" + err.message; }
+}));
+$("#dash-tasks-disabled").addEventListener("click", e => {
+  const button = e.target.closest("[data-restore-task]");
+  if (!button) return;
+  withBtn(button, async () => {
+    try {
+      const result = await call("schedule_restore", button.dataset.restoreTask);
+      $("#dash-tasks-note").textContent = result.ok ? "任务已恢复" : (result.msg || "恢复失败，请查看日志");
+      await loadRegisteredTasks(); await pollState();
+    } catch (err) { $("#dash-tasks-note").textContent = "恢复失败：" + err.message; }
+  });
+});
 
 function renderFeed(events) {
   const feed = $("#dash-feed");

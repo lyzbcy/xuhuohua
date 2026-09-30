@@ -8,6 +8,9 @@ from pathlib import Path
 def check(zip_path: Path) -> None:
     with zipfile.ZipFile(zip_path) as archive:
         names = [item.filename.replace("\\", "/") for item in archive.infolist()]
+        if "xuhuohua.exe" not in names:
+            raise SystemExit("启动器要求 xuhuohua.exe 位于 ZIP 根目录")
+        names = ["/" + name for name in names]
         if archive.testzip() is not None:
             raise SystemExit("ZIP CRC 校验失败")
 
@@ -63,13 +66,13 @@ def check(zip_path: Path) -> None:
 
         version_name = next(n for n in names if n.endswith("/VERSION"))
         guide_name = next(n for n in names if n.endswith("/使用说明.txt"))
-        if len(archive.read(guide_name).strip()) < 100:
+        if len(archive.read(guide_name.lstrip("/")).strip()) < 100:
             raise SystemExit("安装包使用说明为空或内容不完整")
         plugin_name = next(n for n in names if n.endswith("/assets/auto-tasks/index.mjs"))
-        plugin = archive.read(plugin_name)
+        plugin = archive.read(plugin_name.lstrip("/"))
         if b"friendSparkCompletedAt" not in plugin or b"friendSparkFailed" not in plugin:
             raise SystemExit("QQ 插件不是当前批次结果标记版本")
-        packaged_version = archive.read(version_name).decode("utf-8").strip()
+        packaged_version = archive.read(version_name.lstrip("/")).decode("utf-8").strip()
         expected = (Path(__file__).resolve().parents[1] / "VERSION").read_text(encoding="utf-8").strip()
         if packaged_version != expected:
             raise SystemExit(f"版本不一致: 安装包 {packaged_version} / 仓库 {expected}")

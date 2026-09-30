@@ -30,7 +30,11 @@
 
 ## 当前状态速览
 
-- 软件本体 v0.13.11：桌面控制台统一操作抖音/QQ/话术库/定时/日志/更新；云端 QQ 到点临时启动并自动快登，发送后回查聊天记录，整批结束后停止容器释放账号；抖音默认经本机 6089 的 noVNC 网页登录，确认后关闭临时桌面；QQ/抖音统一“来自捞鱼自动续火花”签名，企微 webhook 每日合并发送真实明细；正式桌面分发仅支持 Windows x64
+- 软件本体 v0.14.0：首页可查询、选择删除及恢复实际 Windows 定时任务，删除意图保存于私有 config/schedule.json，自检遵守手动停用；便携包主程序位于 ZIP 根目录以适配启动器。QQ/抖音统一“来自捞鱼自动续火花”签名，企微 webhook 每日合并发送真实明细；正式桌面分发仅支持 Windows x64。
+
+## 启动器适配
+
+按 `E:\共享\tools\软件开发\启动器适配\laoyu-launcher-adapter\SKILL.md` 验收。稳定产品 ID 为 `xuhuohua`，主程序 `xuhuohua.exe`，版本源为根目录 `VERSION`；根目录 `launcher-adapter.json` 描述最终包，私有验证报告在 `verification/launcher-adapter-report.json`。启动器须包含续火花 portable 映射；旧客户端仅更新目录不能获得此功能。
 - 抖音侧：已登录（用户已扫码）；待填真实好友昵称
 - QQ 侧：NapCat 已通过桌面实测，好友火花目标已配置，立即发送成功；每日自动启动任务已注册
 - 定时：计划任务 `续火花-抖音`（每天 08:30，入口 software/backend/daily_douyin.ps1）

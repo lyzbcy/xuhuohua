@@ -34,6 +34,7 @@ tools/napcat/*.zip
 DouYinSparkFlow/
 *.venv/
 .venv/
+.venv-ci/
 node_modules/
 __pycache__/
 *.pyc
@@ -59,3 +60,6 @@ software/build/
 .DS_Store
 Thumbs.db
 *.log
+
+# 本机适配验收报告与隔离测试目录
+/verification/
