@@ -8,6 +8,11 @@ from pathlib import Path
 from typing import Iterator
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
+
 
 class AlreadyRunningError(RuntimeError):
     pass
@@ -57,6 +62,23 @@ class History:
 @contextmanager
 def run_lock(path: Path) -> Iterator[None]:
     path.parent.mkdir(parents=True, exist_ok=True)
+    if fcntl is not None:
+        # The inode stays in place: unlinking a flock file can admit two owners.
+        # Kernel releases the lock on normal exit, crash, SIGKILL and reboot.
+        with path.open("a+") as stream:
+            try:
+                fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise AlreadyRunningError("已有任务正在运行") from exc
+            try:
+                stream.seek(0)
+                stream.truncate()
+                stream.write(str(os.getpid()))
+                stream.flush()
+                yield
+            finally:
+                fcntl.flock(stream, fcntl.LOCK_UN)
+        return
     try:
         descriptor = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
     except FileExistsError as exc:

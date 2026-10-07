@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, AsyncIterator
 from urllib.parse import urlsplit, urlunsplit
 
-from playwright.async_api import Browser, BrowserContext, Page, Playwright, async_playwright
+from playwright.async_api import Browser, BrowserContext, Page, Playwright, Error as PlaywrightError, async_playwright
 
 from app.config import ConfigError, parse_auth_json
 from app.models import Settings
@@ -118,7 +118,7 @@ async def verify_login(page: Page, timeout_ms: int = 15_000) -> None:
 
 
 async def open_private_messages(page: Page, timeout_ms: int = 15_000) -> None:
-    await page.goto(DOUYIN_CHAT_URL, wait_until="domcontentloaded", timeout=45_000)
+    await _navigate_chat(page)
     # 1. Explicit risk-control page takes priority, independently of login state.
     if await _any_visible(page, RISK_MARKERS, timeout_ms=2_000):
         raise RiskControlError("抖音私信页面要求进行安全验证，任务已停止")
@@ -152,7 +152,7 @@ async def open_private_messages(page: Page, timeout_ms: int = 15_000) -> None:
                     await page.reload(wait_until="domcontentloaded", timeout=45_000)
                 except Exception:
                     LOGGER.exception("reload 失败，改为重新访问私信页面")
-                    await page.goto(DOUYIN_CHAT_URL, wait_until="domcontentloaded", timeout=45_000)
+                    await _navigate_chat(page)
             else:
                 await page.wait_for_timeout(_SEARCH_RETRY_DELAY_MS)
 
@@ -163,6 +163,21 @@ async def open_private_messages(page: Page, timeout_ms: int = 15_000) -> None:
     diagnostic = await _collect_safe_diagnostic(page, LOGIN_REQUIRED_MARKERS, RISK_MARKERS)
     LOGGER.error("多次重试后仍未检测到好友搜索框，页面安全诊断:\n%s", diagnostic)
     raise SearchBoxNotReadyError(f"私信页面已打开，但搜索框在 {SEARCH_BOX_RETRIES} 次重试后仍未就绪")
+
+
+async def _navigate_chat(page: Page) -> None:
+    """Retry only transient navigation failures, before any message is sent."""
+    transient = ("ERR_NETWORK_CHANGED", "ERR_CONNECTION_RESET", "ERR_CONNECTION_CLOSED",
+                 "ERR_TIMED_OUT", "Timeout")
+    for attempt in range(3):
+        try:
+            await page.goto(DOUYIN_CHAT_URL, wait_until="domcontentloaded", timeout=45_000)
+            return
+        except PlaywrightError as exc:
+            if attempt == 2 or not any(marker in str(exc) for marker in transient):
+                raise
+            LOGGER.warning("私信页导航遇到临时网络错误，重试 %d/2", attempt + 1)
+            await page.wait_for_timeout(2_000 * (attempt + 1))
 
 
 async def save_trace(session: BrowserSession, path: Path) -> None:

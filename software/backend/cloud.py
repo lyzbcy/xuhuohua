@@ -25,7 +25,7 @@ def export_bundle() -> dict:
     selected.extend((engine / "app").rglob("*.py"))
     selected.append(skill / "SKILL.md")
     selected.extend(skill / "scripts" / name for name in
-                    ("install.sh", "install-qq.sh", "install-skill.sh", "compose.qq.yaml",
+                    ("install.sh", "run-douyin.sh", "dedupe-douyin-cron.py", "install-qq.sh", "install-skill.sh", "compose.qq.yaml",
                      "qq-watchdog.sh", "verify-qq.sh", "qq-qr.sh",
                      "qq-login-page.sh", "qq-login-page.py",
                      "prepare-douyin.sh", "start-douyin-desktop.sh",

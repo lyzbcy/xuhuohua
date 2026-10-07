@@ -21,6 +21,8 @@ REQUIRED = {
     "xuhuohua-cloud/scripts/qq-run.py",
     "xuhuohua-cloud/scripts/notify-result.py",
     "xuhuohua-cloud/scripts/prepare-douyin.sh",
+    "xuhuohua-cloud/scripts/run-douyin.sh",
+    "xuhuohua-cloud/scripts/dedupe-douyin-cron.py",
     "xuhuohua-cloud/scripts/start-douyin-desktop.sh",
     "xuhuohua-cloud/scripts/login-douyin.sh",
     "xuhuohua-cloud/scripts/stop-douyin-desktop.sh",
@@ -49,7 +51,7 @@ def check(path: Path) -> None:
                     or basename in {"config.json", "accounts.json", "settings.json",
                                     "notify-command", "notify-webhook", "notify-state.json", "qq-run-state.json",
                                     "qq-result.json", "douyin-schedule.json", "notification-result.json",
-                                    "douyin-browser-path",
+                                    "douyin-browser-path", "douyin-headless-browser-path",
                                     ".last-update-check", ".update.log", ".update.lock",
                                     "qq-login-page.pid"}):
                 raise SystemExit("云端包含私有文件")

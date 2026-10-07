@@ -31,4 +31,6 @@ def test_run_lock_rejects_second_process(tmp_path: Path) -> None:
             with run_lock(path):
                 pass
 
-    assert not path.exists()
+    # POSIX flock retains its inode to prevent unlink/recreate races.
+    from app.history import fcntl
+    assert path.exists() if fcntl is not None else not path.exists()

@@ -69,7 +69,7 @@ class ReleasePathTests(unittest.TestCase):
             skill = root / "cloud-skill" / "xuhuohua-cloud"
             (skill / "scripts").mkdir(parents=True)
             (skill / "SKILL.md").write_text("skill", encoding="utf-8")
-            for name in ("install.sh", "install-qq.sh", "install-skill.sh",
+            for name in ("install.sh", "run-douyin.sh", "dedupe-douyin-cron.py", "install-qq.sh", "install-skill.sh",
                          "compose.qq.yaml", "qq-watchdog.sh", "verify-qq.sh",
                          "qq-qr.sh", "qq-login-page.sh", "qq-login-page.py",
                          "configure-qq.py", "configure-onebot.py", "qq-run.py", "prepare-douyin.sh",

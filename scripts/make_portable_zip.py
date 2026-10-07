@@ -20,7 +20,7 @@ EXCLUDE_DIR_NAMES = {".venv", ".venv-ci", "__pycache__", ".pytest_cache",
 EXCLUDE_FILE_SUFFIX = (".pyc", ".log", ".tmp")   # 注意：不能排除 .zip——PyInstaller 的 base_library.zip 必须随包
 EXCLUDE_PRIVATE_FILES = {"notify-command", "notify-webhook", "notify-state.json", "qq-run-state.json",
                          "qq-result.json", "douyin-schedule.json", "notification-result.json",
-                         "douyin-browser-path",
+                         "douyin-browser-path", "douyin-headless-browser-path",
                          ".last-update-check", ".update.log", ".update.lock",
                          "qq-login-page.pid"}
 

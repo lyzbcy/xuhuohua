@@ -37,6 +37,12 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 ## 4. 抖音虚拟桌面登录与定时
 
+**浏览器模式必须分开**：`prepare-douyin.sh` 按当前 venv 的 Playwright 要求选择相同 revision 的两个浏览器，扫码登录使用 `douyin-browser-path` 的完整 Chromium，定时运行使用 `douyin-headless-browser-path` 的 Chromium Headless Shell。不要把登录浏览器路径拿来覆盖定时入口；现场完整 Chrome 无头可搜索却无法打开聊天，Headless Shell 的全部好友演练通过。缺少匹配的 Shell 时先准备环境，不宣称任务就绪。两份路径文件仅留本机、不进发布包。
+
+**v0.14.1 排障与升级约定**：同一个解压目录的 QQ、抖音和通知必须使用同一运行用户。先分别检查 root 与部署用户 crontab，避免两套抖音任务同时到点。维护现有安装时，沿用能读写现有 QQ/通知私有文件的用户，不要把 600 文件放宽权限。确认空闲、备份相关入口与 crontab 后覆盖最新公开引擎文件，再以该运行用户重跑 `install.sh 原时间`；root 安装器只删除本目录的旧抖音入口，保留 QQ 与其他项目 cron。非 root 无权清理其他用户 crontab 时，应由原部署管理员清理该目录的重复入口后再验收。不要真实补发。
+
+登录脚本的权威文件为 `douyin-auto-fire/storage-state.json`。统一入口 `scripts/run-douyin.sh` 优先使用它，即使环境变量还指向旧文件；该文件不存在时才兼容父目录 `storage-state.json`。检查路径与文件时间，不打印 Cookie。用 `bash xuhuohua-cloud/run.sh --dry-run` 验收全部好友。导航临时网络错误会有限重试，登录与安全验证不会重试；Linux 锁文件存在不等于有运行进程，内核 flock 会在退出/崩溃时释放，勿手工删正在使用的锁。
+
 1. 运行 `bash xuhuohua-cloud/scripts/prepare-douyin.sh` 安装 Python 依赖和 Chromium。若浏览器缺少系统库，按 Playwright 诊断安装依赖。虚拟桌面需 `Xvfb`、`x11vnc`、`novnc`、`websockify`，建议有 `fluxbox`；在 Debian/Ubuntu 可安装 `xvfb x11vnc novnc websockify fluxbox`。
 2. 运行 `bash xuhuohua-cloud/scripts/start-douyin-desktop.sh`，随即在持续运行的终端执行 `bash xuhuohua-cloud/scripts/login-douyin.sh`，等待浏览器进入登录页。**默认提供 noVNC 网页链接**：让用户在自己电脑建立 `ssh -L 6089:127.0.0.1:6089 用户@服务器`，在浏览器打开 `http://127.0.0.1:6089/vnc_lite.html?autoconnect=true`。6089 刻意避开可能已由 nginx `/vnc/` 公开反代的 6080；上线前仍应核对本机反代配置。noVNC 与 VNC 仅监听服务器本机，必须经 SSH 隧道；不要公开无密码桌面，也不要默认要求用户安装 VNC 客户端。
 3. 用户亲自操作 noVNC 中的浏览器完成扫码、可能出现的人脸验证。**等用户明确确认登录结束**且浏览器显示已登录后，Agent 才给登录脚本输入 Enter；脚本将登录态保存为服务器私有的 `douyin-auto-fire/storage-state.json`。确认文件存在且权限为 600 后，立即运行 `bash xuhuohua-cloud/scripts/stop-douyin-desktop.sh`，关闭 noVNC、VNC 和本次启动的虚拟桌面。若登录失败，也关闭临时桌面并报告原因。

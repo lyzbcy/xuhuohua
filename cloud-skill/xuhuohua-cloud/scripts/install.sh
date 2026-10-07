@@ -22,7 +22,7 @@ if [[ ! -f "$engine/config.json" ]]; then
   echo "请先通过私有通道放入好友与话术配置 config.json" >&2
   exit 2
 fi
-if [[ ! -f "$engine/storage-state.json" && ! -f "$engine/.env" ]]; then
+if [[ ! -f "$engine/storage-state.json" && ! -f "$here/storage-state.json" && ! -f "$engine/.env" ]]; then
   echo "请先通过私有通道放入登录态 storage-state.json 或 .env" >&2
   exit 2
 fi
@@ -37,13 +37,7 @@ cat > "$runner" <<'RUNNER'
 #!/usr/bin/env bash
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$here/douyin-auto-fire"
-export HEADLESS=true
-export TZ=Asia/Shanghai
-export XUHUOHUA_SIGNATURE='来自捞鱼自动续火花'
-browser_path_file="$here/xuhuohua-cloud/douyin-browser-path"
-if [[ -f "$browser_path_file" ]]; then export BROWSER_PATH="$(cat "$browser_path_file")"; fi
-exec .venv/bin/python run.py
+exec /bin/bash "$here/xuhuohua-cloud/scripts/run-douyin.sh" "$@"
 RUNNER
 chmod 700 "$runner"
 due_runner="$here/xuhuohua-cloud/run-if-due.sh"
@@ -72,6 +66,7 @@ printf '{"enabled":true,"time":"%02d:%02d"}\n' "$hour" "$minute" > "$schedule"
 chmod 600 "$schedule"
 tag="# xuhuohua-cloud-daily"
 entry="* * * * * /bin/bash '$due_runner' '$(printf '%02d:%02d' "$hour" "$minute")' >> '$here/logs/cron.log' 2>&1 $tag"
+python3 "$here/xuhuohua-cloud/scripts/dedupe-douyin-cron.py" "$here"
 existing="$(crontab -l 2>/dev/null || true)"
 printf '%s\n' "$existing" | sed '/# xuhuohua-cloud-daily$/d' | { cat; printf '%s\n' "$entry"; } | crontab -
 echo "已注册每天 $(printf '%02d:%02d' "$hour" "$minute") (Asia/Shanghai) 的抖音任务；未立即发送。"

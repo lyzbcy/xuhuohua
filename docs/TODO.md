@@ -21,6 +21,8 @@
 
 ## 🟢 已完成
 
+- [x] v0.14.1 云端抖音重复调度/旧登录态/导航失败/残留锁修复与独立回归
+
 - [x] 上游选型与拉取（三仓库）
 - [x] 抖音侧环境（venv + Playwright Chromium）
 - [x] QQ 插件构建（dist/index.mjs）+ NapCat 一键包就位
