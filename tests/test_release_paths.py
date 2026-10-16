@@ -75,7 +75,7 @@ class ReleasePathTests(unittest.TestCase):
                          "configure-qq.py", "configure-onebot.py", "qq-run.py", "prepare-douyin.sh",
                          "start-douyin-desktop.sh", "stop-douyin-desktop.sh",
                          "login-douyin.sh", "notify-result.py",
-                         "check-update.sh", "update-skill.py"):
+                         "check-update.sh", "update-skill.py", "upgrade-douyin-auth.py"):
                 (skill / "scripts" / name).write_text("test", encoding="utf-8")
             (skill / "scripts" / "qq-qr.sh").write_bytes(b"#!/bin/bash\r\necho ok\r\n")
             private = skill / "qq-data" / "config"

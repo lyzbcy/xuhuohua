@@ -37,6 +37,10 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 ## 4. 抖音虚拟桌面登录与定时
 
+**v0.14.2 会话维护修复**：执行引擎在私信页验证通过后、正常结束且再次验证通过后保存最新 Cookie 与本地存储；使用 600 权限、原子替换、旧快照备份，并检查文件是否被其他进程更新。认证/安全验证失败不覆盖原文件，不自动重新扫码或保证永久有效。人工登录与定时运行共用任务锁。不要借用或覆盖抖音评论、创作者等其他业务的 profile。
+
+**已有安装必须同时升级引擎**：静默更新只更新说明和脚本，不会更新 `douyin-auto-fire/app`。先下载并校验本节最新 Release 的 ZIP 与 .sha256，空闲时将包内公共 Skill 文件覆盖至原目录（保留私有文件），以原 cron 用户运行 `python3 xuhuohua-cloud/scripts/upgrade-douyin-auth.py /绝对路径/xuhuohua-cloud.zip`。它核对 SHA-256 和版本，取得任务锁，备份并仅替换 3 个公开认证相关引擎文件；不改 Cookie、QQ、好友配置、发送历史和 cron。失败不宣称升级完成。新安装直接使用包内引擎即可。升级不能恢复已失效会话；若原会话无效，仍需用户扫码。
+
 **浏览器模式必须分开**：`prepare-douyin.sh` 按当前 venv 的 Playwright 要求选择相同 revision 的两个浏览器，扫码登录使用 `douyin-browser-path` 的完整 Chromium，定时运行使用 `douyin-headless-browser-path` 的 Chromium Headless Shell。不要把登录浏览器路径拿来覆盖定时入口；现场完整 Chrome 无头可搜索却无法打开聊天，Headless Shell 的全部好友演练通过。缺少匹配的 Shell 时先准备环境，不宣称任务就绪。两份路径文件仅留本机、不进发布包。
 
 **v0.14.1 排障与升级约定**：同一个解压目录的 QQ、抖音和通知必须使用同一运行用户。先分别检查 root 与部署用户 crontab，避免两套抖音任务同时到点。维护现有安装时，沿用能读写现有 QQ/通知私有文件的用户，不要把 600 文件放宽权限。确认空闲、备份相关入口与 crontab 后覆盖最新公开引擎文件，再以该运行用户重跑 `install.sh 原时间`；root 安装器只删除本目录的旧抖音入口，保留 QQ 与其他项目 cron。非 root 无权清理其他用户 crontab 时，应由原部署管理员清理该目录的重复入口后再验收。不要真实补发。
@@ -45,8 +49,8 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 1. 运行 `bash xuhuohua-cloud/scripts/prepare-douyin.sh` 安装 Python 依赖和 Chromium。若浏览器缺少系统库，按 Playwright 诊断安装依赖。虚拟桌面需 `Xvfb`、`x11vnc`、`novnc`、`websockify`，建议有 `fluxbox`；在 Debian/Ubuntu 可安装 `xvfb x11vnc novnc websockify fluxbox`。
 2. 运行 `bash xuhuohua-cloud/scripts/start-douyin-desktop.sh`，随即在持续运行的终端执行 `bash xuhuohua-cloud/scripts/login-douyin.sh`，等待浏览器进入登录页。**默认提供 noVNC 网页链接**：让用户在自己电脑建立 `ssh -L 6089:127.0.0.1:6089 用户@服务器`，在浏览器打开 `http://127.0.0.1:6089/vnc_lite.html?autoconnect=true`。6089 刻意避开可能已由 nginx `/vnc/` 公开反代的 6080；上线前仍应核对本机反代配置。noVNC 与 VNC 仅监听服务器本机，必须经 SSH 隧道；不要公开无密码桌面，也不要默认要求用户安装 VNC 客户端。
-3. 用户亲自操作 noVNC 中的浏览器完成扫码、可能出现的人脸验证。**等用户明确确认登录结束**且浏览器显示已登录后，Agent 才给登录脚本输入 Enter；脚本将登录态保存为服务器私有的 `douyin-auto-fire/storage-state.json`。确认文件存在且权限为 600 后，立即运行 `bash xuhuohua-cloud/scripts/stop-douyin-desktop.sh`，关闭 noVNC、VNC 和本次启动的虚拟桌面。若登录失败，也关闭临时桌面并报告原因。
-4. 询问好友昵称和本地文字话术，基于 `douyin-auto-fire/config.example.json` 创建私有 `config.json`，先用 1 位好友和 1 条文字消息，开启防重复，并保持文件权限为 600。执行 `cd douyin-auto-fire && .venv/bin/python run.py --dry-run` 验证登录态和目标。通过后运行 `bash xuhuohua-cloud/scripts/install.sh HH:MM` 注册北京时间每日 cron；正式运行默认无头，并为每位好友自动追加独立签名消息 `来自捞鱼自动续火花`，配置已有相同签名时不会重复追加。
+3. 用户亲自操作 noVNC 中的浏览器完成扫码、可能出现的人脸验证。**等用户明确确认登录结束**后，Agent 才给持续运行的登录脚本输入 Enter；不要用 stdin 已关闭的 nohup 启动这个交互脚本。脚本会验证真实私信页并保存至 `douyin-auto-fire/storage-state.json`，关闭登录浏览器，再使用同一运行用户、定时 Headless Shell 入口独立 dry-run（需要已配置好友）。失败时不报告“登录已完成/任务就绪”；若尚无好友配置，先完成下一步配置再补验收。检查文件存在、600、更新时间和实际入口。无论成功失败都运行 `bash xuhuohua-cloud/scripts/stop-douyin-desktop.sh` 关闭本次桌面；不要关闭其他业务桌面。
+4. 询问好友昵称和本地文字话术，基于 `douyin-auto-fire/config.example.json` 创建私有 `config.json`，先用 1 位好友和 1 条文字消息，开启防重复，并保持文件权限为 600。必须以真实 cron 用户执行 `bash xuhuohua-cloud/scripts/run-douyin.sh --dry-run` 验证全部好友、会话写回及独立恢复；不要绕过统一入口直接运行 run.py，避免继承错误浏览器配置。通过后运行 `bash xuhuohua-cloud/scripts/install.sh HH:MM` 注册北京时间每日 cron；正式运行默认无头，并为每位好友自动追加独立签名消息 `来自捞鱼自动续火花`，配置已有相同签名时不会重复追加。分别报告代码部署、登录恢复、演练与真实发送状态；不能把 dry-run 当真实送达。次日若用户要求跟踪，再按其授权安排检查。
 
 ## 5. 可选的企业微信群机器人结果通知
 

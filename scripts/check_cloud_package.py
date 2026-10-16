@@ -28,6 +28,8 @@ REQUIRED = {
     "xuhuohua-cloud/scripts/stop-douyin-desktop.sh",
     "douyin-auto-fire/scripts/login.py",
     "douyin-auto-fire/run.py",
+    "douyin-auto-fire/app/auth_state.py",
+    "xuhuohua-cloud/scripts/upgrade-douyin-auth.py",
 }
 
 

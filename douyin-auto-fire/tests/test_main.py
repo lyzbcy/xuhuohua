@@ -1,12 +1,49 @@
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
+from dataclasses import replace
+import json
 
 import pytest
 
 from app.browser import AuthenticationError
 from app.models import Message, Settings, Target, TaskConfig
 import app.main as main_module
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('authenticated', [False, True])
+async def test_private_page_controls_session_writeback(monkeypatch, tmp_path, authenticated):
+    path = tmp_path / 'state.json'
+    old = {'cookies':[{'name':'sessionid','value':'old','domain':'.douyin.com','expires':-1}],'origins':[]}
+    fresh = {'cookies':[{'name':'sessionid','value':'rotated','domain':'.douyin.com','expires':-1}],'origins':[]}
+    path.write_text(json.dumps(old))
+    settings = replace(_settings(tmp_path),storage_state=str(path))
+    ctx = MagicMock()
+    ctx.storage_state = AsyncMock(return_value=fresh)
+    session = SimpleNamespace(page=MagicMock(),context=ctx)
+    @asynccontextmanager
+    async def browser(_settings): yield session
+    monkeypatch.setattr(main_module,'load_settings',lambda _env=None:settings)
+    monkeypatch.setattr(main_module,'load_task',lambda _settings:_task())
+    monkeypatch.setattr(main_module,'open_douyin',browser)
+    monkeypatch.setattr(main_module,'open_private_messages',AsyncMock(side_effect=None if authenticated else AuthenticationError('expired')))
+    monkeypatch.setattr(main_module,'verify_login',AsyncMock())
+    chat = MagicMock(); chat.open_target=AsyncMock()
+    monkeypatch.setattr(main_module,'DouyinChat',MagicMock(return_value=chat))
+    send = AsyncMock(); monkeypatch.setattr(main_module,'send_message',send)
+    monkeypatch.setattr(main_module,'_notify_dingtalk',AsyncMock())
+    monkeypatch.setattr(main_module,'_notify_webhook',AsyncMock())
+    monkeypatch.setattr(main_module,'_screenshot',AsyncMock(return_value=None))
+    if authenticated:
+        assert await main_module.run(dry_run=True) == 0
+        assert json.loads(path.read_text()) == fresh
+        assert ctx.storage_state.await_count == 2
+    else:
+        with pytest.raises(AuthenticationError): await main_module.run(dry_run=True)
+        assert json.loads(path.read_text()) == old
+        ctx.storage_state.assert_not_called()
+    send.assert_not_called()
 
 
 def _settings(tmp_path) -> Settings:

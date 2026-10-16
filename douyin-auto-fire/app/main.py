@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 from app.browser import AuthenticationError, RiskControlError, SearchBoxNotReadyError, open_douyin, open_private_messages, save_trace, verify_login
+from app.auth_state import revision, save_verified_state, state_file
 from app.config import ConfigError, load_settings, load_task
 from app.douyin import DouyinChat, PageOperationError
 from app.errors import classify_error, get_retry_strategy, should_stop_all_tasks
@@ -51,6 +52,8 @@ async def run(dry_run: bool = False, env_file: str | None = None) -> int:
     results: list[TargetResult] = []
     screenshots: list[Path] = []
     fatal_error: Exception | None = None
+    auth_path = state_file(settings.storage_state)
+    auth_revision = revision(auth_path)
 
     try:
         # 阶段1: 打开浏览器
@@ -64,6 +67,9 @@ async def run(dry_run: bool = False, env_file: str | None = None) -> int:
             multi_stage.start_stage(1)
             try:
                 await open_private_messages(page)
+                auth_revision = await save_verified_state(session.context, auth_path, auth_revision)
+                if auth_path:
+                    LOGGER.info("私信页验证通过，会话更新已安全保存")
                 multi_stage.finish_stage()
             except Exception as exc:
                 multi_stage.finish_stage()
@@ -193,6 +199,13 @@ async def run(dry_run: bool = False, env_file: str | None = None) -> int:
                         await asyncio.sleep(random.uniform(task.interval_min, task.interval_max))
 
                 multi_stage.finish_stage()
+
+            # Persist rotation at the end too, but never replace state after an
+            # authentication/risk failure or when the page cannot be reverified.
+            if fatal_error is None and auth_path:
+                await verify_login(page, timeout_ms=3_000)
+                auth_revision = await save_verified_state(session.context, auth_path, auth_revision)
+                LOGGER.info("运行结束，会话更新已安全保存")
 
             if settings.trace and not trace_saved:
                 try:

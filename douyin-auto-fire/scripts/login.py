@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -10,25 +11,34 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from playwright.async_api import async_playwright
+from app.auth_state import revision, save_verified_state
+from app.browser import open_private_messages
+from app.history import run_lock
 
 
 DOUYIN_URL = "https://www.douyin.com/"
 
 async def login() -> None:
+    state_path = PROJECT_ROOT / "storage-state.json"
+    expected = revision(state_path)
     async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=False)
+        launch = {"headless": False}
+        if os.environ.get("BROWSER_PATH"):
+            launch["executable_path"] = os.environ["BROWSER_PATH"]
+        browser = await playwright.chromium.launch(**launch)
         context = await browser.new_context(locale="zh-CN")
         page = await context.new_page()
         await page.goto(DOUYIN_URL, wait_until="domcontentloaded")
         await _open_login(page)
         print("请在浏览器中扫码登录。登录完成并看到抖音首页后，回到终端按 Enter。")
         await asyncio.to_thread(input)
-        await page.goto(DOUYIN_URL, wait_until="domcontentloaded")
-        await _verify_home_login(page)
-        await context.storage_state(path="storage-state.json.tmp")
-        await browser.close()
-        Path("storage-state.json.tmp").replace("storage-state.json")
-        print("登录状态已保存到 storage-state.json")
+        try:
+            # Homepage login is insufficient: verify the actual private-message page.
+            await open_private_messages(page)
+            await save_verified_state(context, state_path, expected)
+        finally:
+            await browser.close()
+        print("私信页验证通过，登录态已安全保存；仍需定时入口独立演练")
 
 
 async def _open_login(page) -> None:
@@ -54,4 +64,5 @@ async def _verify_home_login(page) -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(login())
+    with run_lock(PROJECT_ROOT / "artifacts" / "run.lock"):
+        asyncio.run(login())

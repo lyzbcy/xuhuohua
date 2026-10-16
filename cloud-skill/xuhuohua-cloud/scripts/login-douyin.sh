@@ -15,4 +15,7 @@ if [[ -f "$browser_path_file" ]]; then export BROWSER_PATH="$(cat "$browser_path
 cd "$engine"
 "$engine/.venv/bin/python" scripts/login.py
 chmod 600 storage-state.json
-echo "抖音登录态已保存；请先做 dry-run，再注册每日任务。"
+# login.py has closed the visible browser. This independently restores the saved
+# file with the same Headless Shell and user as cron, without sending messages.
+bash "$here/xuhuohua-cloud/scripts/run-douyin.sh" --dry-run
+echo "登录态已保存且定时入口独立演练通过；没有发送消息。"

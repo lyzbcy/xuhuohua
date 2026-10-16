@@ -32,7 +32,7 @@ def export_bundle() -> dict:
                      "stop-douyin-desktop.sh", "login-douyin.sh",
                      "configure-qq.py", "notify-result.py",
                      "check-update.sh", "update-skill.py",
-                     "configure-onebot.py", "qq-run.py"))
+                     "configure-onebot.py", "qq-run.py", "upgrade-douyin-auth.py"))
     if not all(source.is_file() for source in selected):
         return {"ok": False, "msg": "云端包所需文件不完整，请重新安装"}
     with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
