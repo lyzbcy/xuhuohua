@@ -1,4 +1,4 @@
-"""Apply verified public auth files to an idle existing cloud installation."""
+"""Apply verified public auth and message files to an idle cloud installation."""
 import argparse
 from contextlib import contextmanager
 from datetime import datetime
@@ -10,7 +10,7 @@ import shutil
 import tempfile
 import zipfile
 
-FILES = ('app/auth_state.py', 'app/main.py', 'scripts/login.py')
+FILES = ('app/auth_state.py', 'app/main.py', 'app/sender.py', 'scripts/login.py')
 
 
 @contextmanager

@@ -135,12 +135,13 @@ def _task_info(name: str) -> dict:
         return {"exists": False}
     def field(*names):
         for label in names:
-            match = re.search(r"^" + re.escape(label) + r":\s*(.*)$", r.stdout, re.MULTILINE)
+            match = re.search(r"^" + re.escape(label) + r":[ \t]*(.*)$", r.stdout, re.MULTILINE)
             if match:
                 return match.group(1).strip()
         return ""
     return {"exists": True,
             "next_run": field("下次运行时间", "Next Run Time"),
+            "last_run": field("上次运行时间", "Last Run Time"),
             "last_result": field("上次结果", "Last Result"),
             "action": field("要运行的任务", "Task To Run"),
             "start_time": field("开始时间", "Start Time"),

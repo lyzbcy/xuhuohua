@@ -72,7 +72,7 @@ class ReleasePathTests(unittest.TestCase):
             for name in ("install.sh", "run-douyin.sh", "dedupe-douyin-cron.py", "install-qq.sh", "install-skill.sh",
                          "compose.qq.yaml", "qq-watchdog.sh", "verify-qq.sh",
                          "qq-qr.sh", "qq-login-page.sh", "qq-login-page.py",
-                         "configure-qq.py", "configure-onebot.py", "qq-run.py", "prepare-douyin.sh",
+                         "configure-qq.py", "configure-onebot.py", "qq-run.py", "message_policy.py", "prepare-douyin.sh",
                          "start-douyin-desktop.sh", "stop-douyin-desktop.sh",
                          "login-douyin.sh", "notify-result.py",
                          "check-update.sh", "update-skill.py", "upgrade-douyin-auth.py"):

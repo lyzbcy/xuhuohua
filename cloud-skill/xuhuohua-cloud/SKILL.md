@@ -26,11 +26,25 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 一次问清：是否启用 **QQ**、是否启用 **抖音**，各自希望的**北京时间 HH:MM**。同时主动建议配置**企业微信群机器人 webhook 推送链接**接收每日结果，询问是否启用；用户已经给出链接时直接沿用私有上下文，不要再索取或复述。明确通知是可选项，跳过也能正常续火花。只安装用户选择的平台；都不开启就停止。配置好友时再分别询问目标和本地文字话术，建议先从少量好友开始。不要先运行正式发送。
 
+## 同步桌面话术与精选表情
+
+- 已有部署未导入共享配置时沿用两个平台的原话术与默认结尾。
+- 在桌面主导航「云端 Skill」点击「导出话术与表情」，通过私有通道把 ZIP 交给自己的云端 Agent。运行 `python3 xuhuohua-cloud/scripts/message_policy.py import /私有目录/xuhuohua-library.zip`，旧版仅含文字和签名的 JSON 也可导入。
+- 导入后使用 `python3 xuhuohua-cloud/scripts/message_policy.py status` 核对文字数、精选表情数、勾选数和签名状态。导入只更新共享素材配置，好友、任务时间和登录态仍由各自平台管理。配置与验收阶段不发消息。
+- 两平台从文字和已勾选的表情中抽取。QQ 每批选一份内容，抖音每位好友随机选一份。两者都为空时沿用原平台内容；`defaults` 可显式启用三条默认文字。签名可开启、关闭或自定义。
+- 共享配置保存在私有的 `message-policy.json`，表情原图位于 `message-policy-assets/`。升级时保留两者。QQ 图片发送后核对聊天记录与消息详情。若 OneBot 超时或未返回编号，会在本次发送时间窗内回查，并用取回的图片哈希核对原图。结果无法确认时不重发。
+
 ## 3. QQ 登录与定时
+
+**v0.14.3 QQ 自检修正**：只在目标账号、实际在线及正常退出均通过后输出自检成功。任务收尾先向唯一 QQ 主进程发送 TERM，再停止容器并检查退出码；不要用账号注销代替退出。快登按字符串传账号；QQ 明确返回“登录态已失效”时立即失败并准确通知，不重复尝试同一无效凭证，也不伪造原生 `isQuickLogin` 标记。持久化目录有数据、WebUI 设置了自动登录或扫码后在线，都不能替代独立冷启动验收；重新授权仍无法恢复时保留现场，不能宣称彻底修复。
+
+**本机版本覆盖**：`compose.qq.local.yaml` 是部署目录内权限 600 的私有增量。安装器和 QQ 任务会在基础 Compose 后叠加它；升级公共脚本时保留此文件与它引用的本机运行目录，不能把这些目录或个人配置放进公开包。更换 QQ／NapCat 组合先备份并复制独立 profile/config 试验，保持 MAC、hostname、machine-id；只有真实登录、独立冷启动与正式任务入口的无发送自检都通过，才能提升为生产版本。初始化或二维码可用仅代表可继续扫码验证。
+
+版本试验前创建权限 600 的私有 `qq-maintenance` 标记。存在标记时正式任务不发送、不写每日去重记录；`--dry-run` 和 `--session-check` 仍可验证。通过正式入口验收并完成生产提升后删除标记；回滚完成时也删除，避免遗留维护状态阻断原排程。
 
 1. 检查 Docker Engine、Compose v2、Python 3 和 crontab。运行 `bash xuhuohua-cloud/scripts/install-qq.sh`。它部署固定版本 `mlikiowa/napcat-docker:v4.18.19`，将旧版被白名单拒载的插件移入私有备份目录，固定容器 MAC 与主机名，删除旧版常驻 watchdog，并注册 QQ 本机 cron；已有好友配置不会被覆盖。容器路径以 [NapCat Docker 官方文档](https://github.com/NapNeko/NapCat-Docker) 为准。
 2. 默认运行 `bash xuhuohua-cloud/scripts/qq-login-page.sh start`，给用户 `ssh -L 6100:127.0.0.1:6100 用户@服务器` 和浏览器链接 `http://127.0.0.1:6100/`。这是只监听服务器本机、每 2 秒读取最新二维码的页面；过期会提示在 WebUI 刷新，**不要反复发送静态二维码截图**。需要管理 NapCat 时另建 `ssh -L 6099:127.0.0.1:6099 用户@服务器`，打开 `http://127.0.0.1:6099/webui`。两个端口都不能公开到公网；不要把 WebUI Token 发给他人。
-3. 用户扫码并在手机上授权后，先在 WebUI 确认账号已登录，检查 `/app/.config/QQ` 是否挂载到原有 `qq-data/QQ` 且已落盘。询问目标 QQ 号和一条本地话术，运行 `python3 xuhuohua-cloud/scripts/configure-qq.py --time HH:MM --targets QQ号1,QQ号2 --message '话术'`；运行时会自动追加固定结尾 `来自捞鱼自动续火花`，不要让用户重复填写签名。再运行 `python3 xuhuohua-cloud/scripts/configure-onebot.py` 写入私有 OneBot 令牌；两者均不会发消息。**重启容器后再次运行 `verify-qq.sh` 确认同一账号仍已登录**。若重新要求扫码，先检查固定设备标识、挂载目录、权限和 QQ 设备信任；解决并重做重启验证，不要宣称成功。
+3. 用户扫码并在手机上授权后，先在 WebUI 确认账号已登录，检查 `/app/.config/QQ` 是否挂载到原有 `qq-data/QQ` 且已落盘。询问目标 QQ 号和一条本地话术，运行 `python3 xuhuohua-cloud/scripts/configure-qq.py --time HH:MM --targets QQ号1,QQ号2 --message '话术'`；运行时默认追加结尾 `来自捞鱼自动续火花`，不要让用户重复填写签名。再运行 `python3 xuhuohua-cloud/scripts/configure-onebot.py` 写入私有 OneBot 令牌；两者均不会发消息。**重启容器后再次运行 `verify-qq.sh` 确认同一账号仍已登录**。若重新要求扫码，先检查固定设备标识、挂载目录、权限和 QQ 设备信任；解决并重做重启验证，不要宣称成功。
 4. 关闭临时页面：`bash xuhuohua-cloud/scripts/qq-login-page.sh stop`。随后运行 `python3 xuhuohua-cloud/scripts/qq-run.py --session-check`，它必须完成“启动容器 → 自动登录 → OneBot 真登录验证 → 停止容器”，全程不发消息。确认 `docker inspect -f '{{.State.Running}}' xuhuohua-napcat` 输出 `false` 后，才算 QQ 部署通过。
 5. QQ cron 每分钟核对北京时间，仅在配置分钟且当天尚未执行时工作。执行顺序固定为：启动 NapCat → 等待自动登录 → 未上线时通过本机 WebUI `/SetQuickLogin` 主动快登 → 验证 OneBot 账号 → 发送单条消息 → 用返回的 `message_id`、本人账号和完整正文回查聊天记录 → 整批结束后停止容器。只有聊天记录三项完全匹配才算成功；接口只返回成功但历史中找不到时按失败记录，为避免重复不自动重发。无论成功、部分失败或异常都在 `finally` 中停止容器。停止容器会释放 QQ 在线会话并保留下次快登凭证；不要调用会清除设备信任的账号注销。平时不得启动 watchdog 或保持容器常驻。
 6. 如果同账号在本机登录并把云端顶下线，无需立即处理；到点脚本会重新快登，可能把本机会话顶下线，发送后再释放。若 QQ 风控使快登凭证失效，任务应失败并通知用户重新扫码，不能绕过安全验证。若错过时间，不自动补发。不要叠加其他 QQ 发送 cron。
@@ -39,7 +53,7 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 
 **v0.14.2 会话维护修复**：执行引擎在私信页验证通过后、正常结束且再次验证通过后保存最新 Cookie 与本地存储；使用 600 权限、原子替换、旧快照备份，并检查文件是否被其他进程更新。认证/安全验证失败不覆盖原文件，不自动重新扫码或保证永久有效。人工登录与定时运行共用任务锁。不要借用或覆盖抖音评论、创作者等其他业务的 profile。
 
-**已有安装必须同时升级引擎**：静默更新只更新说明和脚本，不会更新 `douyin-auto-fire/app`。先下载并校验本节最新 Release 的 ZIP 与 .sha256，空闲时将包内公共 Skill 文件覆盖至原目录（保留私有文件），以原 cron 用户运行 `python3 xuhuohua-cloud/scripts/upgrade-douyin-auth.py /绝对路径/xuhuohua-cloud.zip`。它核对 SHA-256 和版本，取得任务锁，备份并仅替换 3 个公开认证相关引擎文件；不改 Cookie、QQ、好友配置、发送历史和 cron。失败不宣称升级完成。新安装直接使用包内引擎即可。升级不能恢复已失效会话；若原会话无效，仍需用户扫码。
+**已有安装必须同时升级引擎**：静默更新只更新说明和脚本，不会更新 `douyin-auto-fire/app`。先下载并校验本节最新 Release 的 ZIP 与 .sha256，空闲时将包内公共 Skill 文件覆盖至原目录（保留私有文件），以原 cron 用户运行 `python3 xuhuohua-cloud/scripts/upgrade-douyin-auth.py /绝对路径/xuhuohua-cloud.zip`。它核对 SHA-256 和版本，取得任务锁，备份并替换公开认证及图片发送代码。新版图片发送使用抖音上传预览框里的发送按钮。新安装直接使用包内引擎。升级不能恢复已失效会话；若原会话无效，仍需用户扫码。
 
 **浏览器模式必须分开**：`prepare-douyin.sh` 按当前 venv 的 Playwright 要求选择相同 revision 的两个浏览器，扫码登录使用 `douyin-browser-path` 的完整 Chromium，定时运行使用 `douyin-headless-browser-path` 的 Chromium Headless Shell。不要把登录浏览器路径拿来覆盖定时入口；现场完整 Chrome 无头可搜索却无法打开聊天，Headless Shell 的全部好友演练通过。缺少匹配的 Shell 时先准备环境，不宣称任务就绪。两份路径文件仅留本机、不进发布包。
 

@@ -9,7 +9,11 @@ douyin-auto-fire/artifacts/
 douyin-auto-fire/stickers-lb/
 logs/
 config/message_pool.json
+cloud-skill/xuhuohua-cloud/message-policy.json
+cloud-skill/xuhuohua-cloud/message-policy-assets/
+xuhuohua-library.zip
 config/settings.json
+config/feedback-channel.json
 config/schedule.json
 xuhuohua-cloud.zip
 xuhuohua-cloud.zip.sha256
@@ -17,6 +21,8 @@ xuhuohua-cloud-prompt.txt
 cloud-skill/**/qq-data/
 cloud-skill/**/desktop-logs/
 cloud-skill/**/.env
+**/compose.qq.local.yaml
+**/qq-maintenance
 cloud-skill/**/notify-command
 cloud-skill/**/notify-webhook
 cloud-skill/**/notify-state.json

@@ -19,4 +19,4 @@ if [[ ! -f "$browser_path_file" ]]; then
 fi
 export BROWSER_PATH="$(cat "$browser_path_file")"
 [[ -x "$BROWSER_PATH" ]] || { echo '定时浏览器不存在，请重新准备环境。' >&2; exit 2; }
-exec .venv/bin/python run.py "$@"
+exec .venv/bin/python "$here/xuhuohua-cloud/scripts/message_policy.py" run-douyin run.py "$@"

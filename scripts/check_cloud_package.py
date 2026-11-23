@@ -19,6 +19,7 @@ REQUIRED = {
     "xuhuohua-cloud/scripts/configure-qq.py",
     "xuhuohua-cloud/scripts/configure-onebot.py",
     "xuhuohua-cloud/scripts/qq-run.py",
+    "xuhuohua-cloud/scripts/message_policy.py",
     "xuhuohua-cloud/scripts/notify-result.py",
     "xuhuohua-cloud/scripts/prepare-douyin.sh",
     "xuhuohua-cloud/scripts/run-douyin.sh",
@@ -49,8 +50,9 @@ def check(path: Path) -> None:
             parts = name.lower().split("/")
             basename = parts[-1]
             if ("qq-data" in parts or "artifacts" in parts or "storage_state" in parts
+                    or "message-policy-assets" in parts or basename == "xuhuohua-library.zip"
                     or basename.startswith("storage-state") or basename.startswith(".env")
-                    or basename in {"config.json", "accounts.json", "settings.json",
+                    or basename in {"config.json", "accounts.json", "settings.json", "message-policy.json",
                                     "notify-command", "notify-webhook", "notify-state.json", "qq-run-state.json",
                                     "qq-result.json", "douyin-schedule.json", "notification-result.json",
                                     "douyin-browser-path", "douyin-headless-browser-path",

@@ -618,13 +618,14 @@ async def test_send_image_fails_when_retry_appears(monkeypatch) -> None:
     timeline = _Timeline([(True, False)])
     page = _FakePage(timeline, content_count=1)
     monkeypatch.setattr(sender_module, "_mark_latest_outgoing_message", AsyncMock(return_value=("anchor", "old")))
-    monkeypatch.setattr(sender_module, "_trigger_send", AsyncMock())
+    monkeypatch.setattr(sender_module, "_confirm_image_upload", AsyncMock())
 
     with pytest.raises(PageOperationError, match="发送失败"):
         await sender_module.send_image(page, "image.png")
 
     # The file was actually uploaded before confirmation.
     page._file_group.first.set_input_files.assert_awaited_once_with("image.png")
+    sender_module._confirm_image_upload.assert_awaited_once_with(page)
 
 
 @pytest.mark.asyncio
@@ -634,7 +635,7 @@ async def test_send_image_waits_for_terminal_state(monkeypatch) -> None:
     timeline = _Timeline([(False, True), (False, True), (False, False), (False, False)])
     page = _FakePage(timeline, content_count=1)
     monkeypatch.setattr(sender_module, "_mark_latest_outgoing_message", AsyncMock(return_value=("anchor", "old")))
-    monkeypatch.setattr(sender_module, "_trigger_send", AsyncMock())
+    monkeypatch.setattr(sender_module, "_confirm_image_upload", AsyncMock())
 
     await sender_module.send_image(page, "image.png")  # must not raise
 
@@ -947,9 +948,7 @@ async def test_real_pending_timeout_never_success(monkeypatch) -> None:
 
 @pytest.mark.asyncio
 async def test_real_image_delayed_failure(monkeypatch, tmp_path) -> None:
-    # Image bubble present. The retry mounts *after* send_image's own upload
-    # stabilization wait AND after the old stable window would have ended, i.e.
-    # during _await_send_terminal_state. Must FAIL, never success.
+    # An outgoing image is visible and the retry marker arrives late.
     page = await _make_real_page()
     img = tmp_path / "image.png"
     img.write_bytes(b"\x89PNG\r\n\x1a\n")
@@ -957,14 +956,11 @@ async def test_real_image_delayed_failure(monkeypatch, tmp_path) -> None:
         async def mount_retry(pg):
             await _set_side_inner(pg, "retry")
 
-        # send_image waits 1500ms to stabilize the upload before confirming.
-        # Schedule the retry at virtual 2200ms so it mounts after that pre-wait,
-        # during the terminal-state observation (past the old 500ms window).
-        clock = _VirtualClock(schedules=[(2200, mount_retry)])
+        clock = _VirtualClock(schedules=[(1200, mount_retry)])
         _patch_clock(monkeypatch, clock)
         page.wait_for_timeout = lambda ms: clock.wait_for_timeout(ms, page)
         monkeypatch.setattr(sender_module, "_mark_latest_outgoing_message", AsyncMock(return_value=("anchor", "old")))
-        monkeypatch.setattr(sender_module, "_trigger_send", AsyncMock())
+        monkeypatch.setattr(sender_module, "_confirm_image_upload", AsyncMock())
 
         async def wf_fn(*a, **k):
             return True
@@ -993,9 +989,27 @@ async def test_real_image_pending_then_success(monkeypatch, tmp_path) -> None:
         _patch_clock(monkeypatch, clock)
         page.wait_for_timeout = lambda ms: clock.wait_for_timeout(ms, page)
         monkeypatch.setattr(sender_module, "_mark_latest_outgoing_message", AsyncMock(return_value=("anchor", "old")))
-        monkeypatch.setattr(sender_module, "_trigger_send", AsyncMock())
+        monkeypatch.setattr(sender_module, "_confirm_image_upload", AsyncMock())
         page.wait_for_function = AsyncMock(side_effect=lambda *a, **k: True)
 
         await sender_module.send_image(page, img.as_posix())
+    finally:
+        await _teardown_real_page(page)
+
+
+@pytest.mark.asyncio
+async def test_image_upload_clicks_the_preview_send_button() -> None:
+    page = await _make_real_page()
+    try:
+        await page.set_content("""
+            <button onclick="document.body.dataset.choice='composer'">发送</button>
+            <div class="semi-modal-wrap">
+              <button onclick="document.body.dataset.choice='cancel'">取消</button>
+              <button class="MsgInputSendFileModalbtnSure"
+                      onclick="document.body.dataset.choice='image'">发送（1）</button>
+            </div>
+        """)
+        await sender_module._confirm_image_upload(page)
+        assert await page.locator("body").get_attribute("data-choice") == "image"
     finally:
         await _teardown_real_page(page)

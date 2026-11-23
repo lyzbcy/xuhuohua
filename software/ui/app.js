@@ -1,4 +1,4 @@
-/* 续火花控制台 · 前端逻辑 */
+/* 捞鱼火花管家 · 前端逻辑 */
 "use strict";
 
 const $ = (sel) => document.querySelector(sel);
@@ -88,18 +88,66 @@ function qqFormSnapshot() {
   return JSON.stringify([$("#fs-enable").checked, $("#fs-time").value, $("#fs-targets").value]);
 }
 
+/* ---------- Windows 窗口 ---------- */
+async function changeWindow(action) {
+  if (!apiReady) return;
+  try {
+    const result = await call("window_action", action);
+    if (action !== "toggle_maximize" || !result) return;
+    const button = $('[data-window="toggle_maximize"]');
+    const label = result.maximized ? "还原" : "最大化";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    document.documentElement.classList.toggle("window-maximized", result.maximized);
+  } catch (error) {
+    setStatus("窗口操作失败：" + error.message);
+  }
+}
+$$("[data-window]").forEach(button => button.addEventListener("click", () => changeWindow(button.dataset.window)));
+$(".window-drag").addEventListener("dblclick", () => changeWindow("toggle_maximize"));
+
+const resizeGrip = $(".window-resize");
+let resizeStart;
+let resizePending = false;
+resizeGrip.addEventListener("pointerdown", event => {
+  if (event.button !== 0 || !apiReady) return;
+  resizeStart = { x: event.screenX, y: event.screenY, width: innerWidth, height: innerHeight };
+  resizeGrip.setPointerCapture(event.pointerId);
+});
+resizeGrip.addEventListener("pointermove", async event => {
+  if (!resizeStart || resizePending) return;
+  resizePending = true;
+  const width = resizeStart.width + event.screenX - resizeStart.x;
+  const height = resizeStart.height + event.screenY - resizeStart.y;
+  try { await call("window_resize", width, height); }
+  catch (error) { setStatus("窗口缩放失败：" + error.message); }
+  finally { resizePending = false; }
+});
+resizeGrip.addEventListener("lostpointercapture", () => { resizeStart = null; });
+
 /* ---------- 页面切换 ---------- */
 let currentPage = "dashboard";
 function gotoPage(name) {
   currentPage = name;
-  $$(".nav-item").forEach(b => b.classList.toggle("active", b.dataset.page === name));
+  const section = { logs: "dashboard", about: "settings" }[name] || name;
+  $$(".nav-item[data-page]").forEach(button => {
+    const active = button.dataset.page === section;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "page");
+    else button.removeAttribute("aria-current");
+  });
+  $(".main").scrollTop = 0;
   $$(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + name));
   if (name === "logs") refreshLogs();
   if (name === "settings") loadNotify();
+  if (name === "pool") loadSignature();
   if (name === "about") loadAbout();
-  if (name === "schedule") loadSchedule();
+  if (name === "schedule") {
+    loadSchedule();
+    loadRegisteredTasks();
+  }
 }
-$$(".nav-item").forEach(btn => btn.addEventListener("click", async () => {
+$$(".nav-item[data-page]").forEach(btn => btn.addEventListener("click", async () => {
   const target = btn.dataset.page;
   if (currentPage === "pool" && target !== "pool" && JSON.stringify(poolDirty) !== poolSnapshot) {
     if (!confirm("话术库还没保存，现在离开会丢失刚才的修改。确定离开吗？")) return;
@@ -112,6 +160,9 @@ $$(".nav-item").forEach(btn => btn.addEventListener("click", async () => {
   if (target === "douyin") renderDyFriends();
   gotoPage(target);
 }));
+
+$$("[data-open-page]").forEach(button =>
+  button.addEventListener("click", () => gotoPage(button.dataset.openPage)));
 
 /* ---------- 轮询 ---------- */
 async function pollState() {
@@ -148,7 +199,7 @@ async function pollQr() {
 }
 setInterval(pollEvents, 1600);
 setInterval(pollState, 3200);
-setInterval(() => { if (currentPage === "dashboard") loadRegisteredTasks(); }, 15000);
+setInterval(() => { if (currentPage === "dashboard" || currentPage === "schedule") loadRegisteredTasks(); }, 15000);
 setInterval(pollQr, 4000);
 setInterval(() => { $("#statusbar-time").textContent = new Date().toLocaleTimeString("zh-CN"); }, 1000);
 
@@ -161,62 +212,85 @@ function renderState() {
   if (envPanel) envPanel.style.display = (state.douyin && state.douyin.env_ready === false) ? "" : "none";
 
   const dy = state.douyin;
-  const dyEl = $("#dash-douyin");
-  dyEl.textContent = dy.logged_in ? "已登录 ✓" : "未登录";
-  dyEl.className = "card-status " + (dy.logged_in ? "ok" : "bad");
-  const realFriends = (dy.friends || []).filter(f => !PLACEHOLDER_RE.test(f));
-  if (realFriends.length) {
-    $("#dash-douyin-sub").textContent = "好友 " + realFriends.length + " 位：" + realFriends.slice(0, 3).join("、") + (realFriends.length > 3 ? "…" : "");
-    $("#dash-douyin-sub").style.color = "";
-  } else {
-    $("#dash-douyin-sub").textContent = "还没填真实好友：到「抖音」页添加";
-    $("#dash-douyin-sub").style.color = "#e8a013";
-  }
-  $("#dy-login-status").innerHTML = dy.logged_in
-    ? '<span class="ok">✔ 已登录（登录凭证有效）</span>'
-    : '<span class="bad">✘ 尚未登录，请点击下方按钮扫码</span>';
   const busy = Object.values(dy.running || {}).some(Boolean);
+  const dyStatus = busy ? "运行中" : !dy.env_ready ? "待初始化" : dy.logged_in ? "已保存登录态" : "需登录";
+  setPill($("#dash-douyin"), dyStatus, !busy && dy.env_ready && dy.logged_in ? "ok" : "mid");
+  $("#dy-login-status").innerHTML = dy.logged_in
+    ? '<span class="ok">✔ 已保存登录凭证</span>'
+    : '<span class="bad">✘ 尚未登录，请点击下方按钮扫码</span>';
   $("#dy-proc").innerHTML = busy
-    ? '<span class="mid">⏳ 有任务正在运行，进度见仪表盘「实时动态」</span>'
+    ? '<span class="mid">有任务正在运行，进度见运行日志</span>'
     : '<span class="ok">空闲</span>';
 
-  const qqEl = $("#dash-qq");
-  qqEl.textContent = state.qq.running ? "运行中 ✓" : "未运行";
-  qqEl.className = "card-status " + (state.qq.running ? "ok" : "mid");
-  $("#dash-qq-sub").textContent = state.qq.running
-    ? "QQ 引擎工作中（别关它的黑色窗口）"
-    : (state.qq.quick_account
-      ? "点击下方「启动 QQ」——将快速登录（" + state.qq.quick_account + "），通常不用扫码"
-      : "点击下方「启动 QQ」；首次需扫码一次，之后自动快速登录");
-
-  const sc = $("#dash-sched");
-  if (state.schedule && state.schedule.exists) {
-    sc.textContent = state.schedule.next_run || "已注册";
-    sc.className = "card-status mid";
-    const resMap = { "0": "上次运行成功", "3": "上次运行时还没登录抖音（已跳过）" };
-    $("#dash-sched-sub").textContent = (resMap[state.schedule.last_result] || "上次结果：" + (state.schedule.last_result || "-")) + " · 到点电脑需开机联网";
-  } else {
-    sc.textContent = "未注册";
-    sc.className = "card-status bad";
-    $("#dash-sched-sub").textContent = "到「定时」页注册";
-  }
+  const dyAction = $("#dash-run");
+  dyAction.disabled = busy;
+  dyAction.classList.toggle("primary", !!(dy.env_ready && dy.logged_in));
+  dyAction.textContent = busy ? "正在运行" : !dy.env_ready ? "初始化抖音" : dy.logged_in ? "立即续火花" : "登录抖音";
+  setPill($("#dash-qq"), state.qq.running ? "引擎运行中" : state.qq.quick_account ? "待启动" : "需登录",
+    state.qq.running ? "ok" : "mid");
+  $("#dash-qq-send").textContent = state.qq.quick_account || state.qq.running ? "立即续火花" : "配置 QQ";
   renderDyFriends();
+}
+
+function setPill(element, label, tone) {
+  element.textContent = label;
+  element.className = "pill " + tone;
+}
+
+function taskResult(task, platform) {
+  const raw = task?.last_result?.trim();
+  const code = raw ? Number(raw) : NaN;
+  if (!task?.last_run || /\b(?:1900|1999)\b/.test(task.last_run) || code === 267011) {
+    return { label: "暂无结果", tone: "" };
+  }
+  if (code === 0) return { label: "任务执行成功", tone: "ok" };
+  if (code === 3 && platform === "抖音") return { label: "上次未登录，已跳过", tone: "mid" };
+  if (code === 3 && platform === "QQ") return { label: "QQ 尚未登录", tone: "mid" };
+  if (code === 267009) return { label: "任务运行中", tone: "mid" };
+  return raw ? { label: "结果码 " + raw, tone: code === 1 || code === 2 ? "bad" : "mid" }
+    : { label: "系统未提供结果", tone: "" };
+}
+
+function taskRow(name, platform, label) {
+  const task = tasksData?.tasks.find(item => item.name === name);
+  const disabled = tasksData?.disabled?.some(item => item.name === name)
+    || /^(disabled|已禁用|禁用)$/i.test(task?.state || "");
+  const next = task?.next_run?.trim();
+  const available = next && !/^(?:N\/?A|无|不适用|—)$/i.test(next);
+  return {
+    task, platform, label,
+    status: disabled ? "已停用" : task ? "已启用" : tasksData ? "未注册" : "读取中",
+    enabled: !!task && !disabled,
+    next: !disabled && available ? next : "",
+    result: taskResult(task, platform),
+  };
 }
 
 function renderPlan() {
   if (!state) return;
-  const el = $("#dash-plan");
-  if (!el) return;
-  const dyNext = state.schedule && state.schedule.exists ? state.schedule.next_run : "未注册";
-  const dyTime = dyNext !== "未注册" ? dyNext.split(" ")[1] || "" : "";
-  const qqT = state.qq.send_time || "10:00:00";
-  const items = [
-    ["🎵 抖音发送", state.schedule && state.schedule.exists ? "每天 " + (dyTime || "") + "（下次 " + dyNext + "）" : "未注册定时，去「定时」页开启"],
-    ["🐧 QQ 发送", "配置时间：每天 " + qqT + (tasksData && !tasksData.tasks.some(t => t.name === "续火花-QQ启动") ? "（自动启动任务未注册）" : "")],
-    ["🔄 话术轮换", state.rotate && state.rotate.exists ? "每天 00:05 自动换一条新话术" : "未启用"],
-    ["🔍 更新检查", "每次打开软件时静默检查（手动在「关于」页）"],
-  ];
-  el.innerHTML = items.map(([k, v]) => `<div class="plan-item"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
+  const dy = taskRow("续火花-抖音", "抖音", "抖音续火花");
+  const qq = taskRow("续火花-QQ启动", "QQ", "QQ 自动启动");
+  const rows = [dy, qq];
+  for (const [key, row] of [["douyin", dy], ["qq", qq]]) {
+    $("#dash-" + key + "-next").textContent = row.next || (row.enabled ? "系统未提供" : row.status);
+    $("#dash-" + key + "-last").textContent = row.result.label;
+  }
+  const plan = rows.map(row => {
+    const daily = row.task?.start_time?.match(/\b\d{1,2}:\d{2}(?::\d{2})?\b/)?.[0];
+    const time = row.enabled && daily ? "每天 " + daily : "—";
+    return `<tr><th scope="row">${esc(row.label)}</th><td>${esc(time)}</td>
+      <td><span class="pill ${row.enabled ? "ok" : ""}">${esc(row.status)}</span></td></tr>`;
+  });
+  $("#dash-plan").innerHTML = plan.join("");
+  const results = rows.filter(row => row.result.label !== "暂无结果");
+  $("#dash-results").innerHTML = results.length ? results.map(row =>
+    `<tr><td>${esc(row.task.last_run)}</td><th scope="row">${esc(row.platform)}</th>
+      <td><span class="result-label ${row.result.tone}">${esc(row.result.label)}</span></td></tr>`).join("")
+    : '<tr><td colspan="3" class="empty-row">' + (tasksData ? "暂无系统任务执行记录" : "正在读取执行结果…") + '</td></tr>';
+  const upcoming = rows.filter(row => row.next);
+  $("#dash-upcoming").innerHTML = upcoming.length ? upcoming.map(row =>
+    `<div class="upcoming-item"><strong>${esc(row.label)}</strong><span>${esc(row.next)}</span></div>`).join("")
+    : '<p class="hint">' + (tasksData ? "暂无下一次运行时间" : "正在读取任务…") + '</p>';
 }
 
 async function loadRegisteredTasks() {
@@ -275,10 +349,20 @@ function renderFeed(events) {
 }
 
 /* ---------- 仪表盘动作 ---------- */
-$("#dash-run").addEventListener("click", () => { gotoPage("douyin"); doRun(false); });
-$("#dash-dryrun").addEventListener("click", () => { gotoPage("douyin"); doRun(true); });
-$("#dash-qq-start").addEventListener("click", qqStart);
-$("#dash-qq-send").addEventListener("click", () => qqSendNow());
+$("#dash-run").addEventListener("click", () => {
+  if (!state) return;
+  gotoPage("douyin");
+  if (state.douyin.env_ready && state.douyin.logged_in) doRun(false);
+  else if (state.douyin.env_ready) $("#dy-login-btn").focus();
+  else $("#dy-setup-env").focus();
+});
+$("#dash-qq-send").addEventListener("click", event => withBtn(event.target, () => {
+  if (!state) return;
+  if (state.qq.quick_account || state.qq.running) return qqSendNow();
+  gotoPage("qq");
+}));
+$("#dash-edit-plan").addEventListener("click", () => gotoPage("schedule"));
+$("#dash-view-logs").addEventListener("click", () => gotoPage("logs"));
 
 /* ---------- 抖音页 ---------- */
 $("#dy-setup-env").addEventListener("click", (e) => withBtn(e.target, async () => {
@@ -427,7 +511,7 @@ $("#qq-stop").addEventListener("click", (e) => withBtn(e.target, async () => {
 function qqSendNow() {
   if (!confirm("将立刻给「对方 QQ 号」里的所有好友随机发一条共享话术，确定？")) return;
   setStatus("正在通过 QQ 引擎发送…（首次使用会自动重启一次引擎，不用扫码）");
-  call("qq_send_now").then(r => {
+  return call("qq_send_now").then(r => {
     if (r.results && r.results.length) alert(r.msg + "\n" + r.results.map(x => `${x.target}：${x.msg}`).join("\n"));
     else alert(r.msg);
     setStatus(r.msg || "发送结束");
@@ -480,7 +564,63 @@ $("#qq-save").addEventListener("click", (e) => withBtn(e.target, async () => {
   } catch (err) { alert("保存失败：" + err.message); }
 }));
 
+$("#open-feedback").addEventListener("click", async () => {
+  if (currentPage === "pool" && JSON.stringify(poolDirty) !== poolSnapshot
+      && !confirm("话术库还没保存，确定离开吗？")) return;
+  if (currentPage === "qq" && lastQqConfig && qqFormSnapshot() !== qqSnapshot
+      && !confirm("QQ 页的配置还没保存，确定离开吗？")) return;
+  gotoPage("feedback");
+  try {
+    const info = await call("feedback_info");
+    $("#feedback-version").textContent = "捞鱼火花管家 v" + info.version;
+    $("#feedback-submit").disabled = !info.available;
+    $("#feedback-result").textContent = info.available ? "" : "开发者反馈通道尚未配置。";
+  } catch (error) {
+    $("#feedback-result").textContent = "无法读取反馈通道，请稍后重新打开。";
+  }
+});
+$("#feedback-form").addEventListener("submit", event => {
+  event.preventDefault();
+  const note = $("#feedback-result");
+  const message = $("#feedback-message");
+  withBtn($("#feedback-submit"), async () => {
+    note.textContent = "正在发送…";
+    try {
+      const result = await call("feedback_send", $("#feedback-category").value,
+        message.value, $("#feedback-logs").checked);
+      note.textContent = result.msg;
+      if (result.ok) message.value = "";
+    } catch (error) { note.textContent = "发送未确认，内容已保留。"; }
+  });
+});
+
 /* ---------- 话术库页（QQ 和抖音共用） ---------- */
+function syncSignatureInput() {
+  $("#signature-text").disabled = !$("#signature-enabled").checked;
+}
+
+async function loadSignature() {
+  try {
+    const signature = await call("signature_get");
+    $("#signature-enabled").checked = signature.enabled;
+    $("#signature-text").value = signature.text;
+    $("#signature-text").placeholder = signature.default;
+    syncSignatureInput();
+  } catch (err) {
+    $("#signature-note").textContent = "读取签名失败：" + err.message;
+  }
+}
+$("#signature-enabled").addEventListener("change", syncSignatureInput);
+$("#signature-save").addEventListener("click", (event) => withBtn(event.target, async () => {
+  const note = $("#signature-note");
+  try {
+    const result = await call("signature_save", $("#signature-enabled").checked, $("#signature-text").value);
+    if (!result.ok) throw new Error(result.msg);
+    note.textContent = "已保存。抖音与 QQ 立即发送下次运行生效，QQ 定时发送在下次话术轮换后生效。";
+  } catch (err) {
+    note.textContent = "保存失败：" + err.message;
+  }
+}));
 async function loadPool() {
   try {
     const r = await call("pool_get");
@@ -636,18 +776,33 @@ $("#cloud-export").addEventListener("click", (e) => withBtn(e.target, async () =
     $("#cloud-note").textContent = r.ok ? "已导出：" + r.path + "（不含登录态和好友配置）" : r.msg;
   } catch (err) { $("#cloud-note").textContent = "导出失败：" + err.message; }
 }));
+async function copyCloudText(value) {
+  try { await navigator.clipboard.writeText(value); }
+  catch (_) {
+    const box = document.createElement("textarea");
+    box.value = value;
+    document.body.appendChild(box);
+    try {
+      box.select();
+      if (!document.execCommand("copy")) throw new Error("系统不允许复制，请检查剪贴板权限");
+    } finally { box.remove(); }
+  }
+}
+$("#cloud-policy").addEventListener("click", (e) => withBtn(e.target, async () => {
+  try {
+    const result = await call("cloud_library_export");
+    if (result.cancelled) return;
+    $("#cloud-library-note").textContent = result.ok
+      ? "已导出 " + result.stickers + " 张表情（勾选 " + result.selected + " 张）到 " + result.path
+      : result.msg;
+  } catch (err) { $("#cloud-library-note").textContent = "导出失败：" + err.message; }
+}));
 $("#cloud-copy").addEventListener("click", (e) => withBtn(e.target, async () => {
   try {
     const r = await call("cloud_skill_prompt");
     if (!r.ok) throw new Error(r.msg || "最新 Release Prompt 不可用");
     const value = r.prompt || "";
-    try { await navigator.clipboard.writeText(value); }
-    catch (_) {
-      const box = document.createElement("textarea");
-      box.value = value; document.body.appendChild(box); box.select();
-      if (!document.execCommand("copy")) throw new Error("系统不允许复制，请在浏览器权限中允许剪贴板");
-      box.remove();
-    }
+    await copyCloudText(value);
     $("#cloud-note").textContent = "部署 Prompt 已复制。发给云端 Agent 后，它会从最新 Release 下载并校验云端包。";
   } catch (err) { $("#cloud-note").textContent = "复制失败：" + err.message; }
 }));

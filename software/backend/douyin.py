@@ -149,7 +149,12 @@ def _engine_env() -> dict:
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
     from backend import notify
-    env["HEADLESS"] = "true" if notify.get_settings().get("browser_headless", True) else "false"
+    from backend import pool
+    settings = notify.get_settings()
+    env["HEADLESS"] = "true" if settings.get("browser_headless", True) else "false"
+    signature = pool.signature_text(settings)
+    env["XUHUOHUA_DESKTOP_SIGNATURE_MODE"] = "on" if signature else "off"
+    env["XUHUOHUA_DESKTOP_SIGNATURE_TEXT"] = signature
     if engine_python() == str(DOUYIN_RUNTIME_PY) and DOUYIN_DEPS.exists():
         env["PYTHONPATH"] = str(DOUYIN_DEPS)
     return env

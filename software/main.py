@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""续火花控制台 —— 主程序
+"""捞鱼火花管家 —— 主程序
 pywebview 窗口 + Python 后端桥接（前端通过 pywebview.api.* 调用）。
 启动：software 下的 .venv/Scripts/python.exe main.py
 """
@@ -43,16 +43,38 @@ _remove_mark_of_the_web()
 
 import webview  # noqa: E402
 
-from backend import cloud, douyin, logger, notify, pool, qq, scheduler, setup_env, updater  # noqa: E402
+from backend import cloud, douyin, feedback, logger, notify, pool, qq, scheduler, setup_env, updater  # noqa: E402
 from backend.paths import (DOUYIN_RUNLOG, DOUYIN_STICKERS, FETCH_FRIENDS_SCRIPT,  # noqa: E402
                            LOG_DIR, NAPCAT_DIR, PROJECT_ROOT, UI_DIR,
                            UI_STICKER_DIR)
 
-WINDOW_TITLE = "续火花控制台"
+WINDOW_TITLE = "捞鱼火花管家"
 INSTANCE_PORT = 0 if os.environ.get("XUHUOHUA_SMOKE") == "1" else 28099
 
 
 class Api:
+    _window = None
+
+    def window_action(self, action):
+        if sys.platform != "win32" or self._window is None:
+            return
+        window = self._window
+        if action == "minimize":
+            window.minimize()
+        elif action == "toggle_maximize":
+            maximized = str(window.native.WindowState) == "Maximized"
+            if maximized:
+                window.restore()
+            else:
+                window.maximize()
+            return {"maximized": not maximized}
+        elif action == "close":
+            window.destroy()
+
+    def window_resize(self, width, height):
+        if sys.platform == "win32" and self._window is not None:
+            self._window.resize(max(900, int(width)), max(620, int(height)))
+
     # ---------- 全局状态 ----------
     def get_state(self):
         plugin_cfg = qq.get_plugin_config()
@@ -207,6 +229,29 @@ class Api:
     def schedule_restore(self, name):
         return scheduler.restore_task(name)
 
+    def cloud_library_export(self):
+        window = self._window
+        if window is None:
+            return {"ok": False, "msg": "软件窗口尚未就绪。"}
+        result = window.create_file_dialog(webview.FileDialog.SAVE, save_filename="xuhuohua-library.zip",
+                                           file_types=("话术与表情同步包 (*.zip)",))
+        if not result:
+            return {"ok": False, "cancelled": True}
+        destination = Path(result[0] if isinstance(result, (tuple, list)) else result)
+        if destination.suffix.lower() != ".zip":
+            destination = destination.with_suffix(".zip")
+        settings = notify.get_settings()
+        library = pool.get_pool()
+        data = {"texts": library["texts"],
+                "signature_enabled": settings.get("signature_enabled") is not False,
+                "signature_text": settings.get("signature_text") or ""}
+        try:
+            return cloud.export_library(data, library["stickers"], destination)
+        except ValueError as exc:
+            return {"ok": False, "msg": str(exc)}
+        except OSError:
+            return {"ok": False, "msg": "无法写入文件，请换一个保存位置。"}
+
     def cloud_skill_export(self):
         return cloud.export_bundle()
 
@@ -237,6 +282,26 @@ class Api:
         return updater.check_updates()
 
     # ---------- 设置 / 通知 ----------
+    def signature_get(self):
+        settings = notify.get_settings()
+        return {"enabled": settings.get("signature_enabled") is not False,
+                "text": settings.get("signature_text") or "", "default": pool.SIGNATURE}
+
+    def signature_save(self, enabled, text):
+        text = str(text or "").strip()
+        if any(mark in text for mark in ("[CQ:", "\r", "\n")):
+            return {"ok": False, "msg": "请输入一行普通文本"}
+        notify.save_settings({"signature_enabled": bool(enabled), "signature_text": text})
+        return {"ok": True}
+
+    def feedback_info(self):
+        return {"available": feedback.available(), "version": updater.get_version()}
+
+    def feedback_send(self, category, message, include_logs):
+        if not isinstance(category, str):
+            return {"ok": False, "msg": "请选择有效的问题分类。"}
+        return feedback.send(WINDOW_TITLE, updater.get_version(), category, message, include_logs)
+
     def notify_get(self):
         return {"ok": True, "settings": notify.get_settings()}
 
@@ -286,7 +351,7 @@ def main():
         try:
             import ctypes
             ctypes.windll.user32.MessageBoxW(
-                0, "续火花控制台已经在运行啦，请看任务栏。", "续火花控制台", 0x40)
+                0, "捞鱼火花管家已经在运行啦，请看任务栏。", "捞鱼火花管家", 0x40)
         except Exception:
             pass
         return
@@ -295,7 +360,10 @@ def main():
         _startup_housekeeping()
     api = Api()
     window = webview.create_window(WINDOW_TITLE, str(UI_DIR / "index.html"), js_api=api,
-                                   width=1120, height=760, min_size=(900, 620))
+                                   width=1120, height=760, min_size=(900, 620),
+                                   frameless=sys.platform == "win32", easy_drag=False,
+                                   background_color="#24090e")
+    api._window = window
     tray_state = {"icon": None, "exiting": False}
 
     def _show_pet(kind):

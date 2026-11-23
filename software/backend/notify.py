@@ -3,6 +3,9 @@
 配置存 config/settings.json（与话术池同目录，不入库）。
 """
 import json
+import os
+import tempfile
+import threading
 import urllib.request
 from pathlib import Path
 
@@ -11,7 +14,11 @@ from backend.paths import PROJECT_ROOT
 
 SETTINGS_FILE = PROJECT_ROOT / "config" / "settings.json"
 
+_settings_lock = threading.Lock()
+
 DEFAULTS = {
+    "signature_enabled": True,
+    "signature_text": "",
     "browser_headless": True,
     "wecom_webhook": "",
     "notify_on_success": True,   # 每日定时发送完成（含成败统计）
@@ -30,15 +37,20 @@ def get_settings() -> dict:
 
 
 def save_settings(patch: dict) -> dict:
-    cur = get_settings()
-    for k in DEFAULTS:
-        if k in patch:
-            cur[k] = patch[k]
-    cur["browser_headless"] = bool(cur.get("browser_headless", True))
-    cur["wecom_webhook"] = str(cur.get("wecom_webhook", "")).strip()
-    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    SETTINGS_FILE.write_text(json.dumps(cur, ensure_ascii=False, indent=2),
-                             encoding="utf-8")
+    with _settings_lock:
+        cur = get_settings()
+        cur.update({key: patch[key] for key in DEFAULTS if key in patch})
+        cur["browser_headless"] = bool(cur.get("browser_headless", True))
+        cur["wecom_webhook"] = str(cur.get("wecom_webhook", "")).strip()
+        SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", suffix=".tmp",
+                                         dir=SETTINGS_FILE.parent, delete=False) as handle:
+            pending = Path(handle.name)
+        try:
+            pending.write_text(json.dumps(cur, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(pending, SETTINGS_FILE)
+        finally:
+            pending.unlink(missing_ok=True)
     logger.ok("[通知] 设置已保存", source="notify")
     return cur
 

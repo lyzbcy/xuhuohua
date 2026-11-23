@@ -5,16 +5,23 @@
 """
 import json
 import random
+import shutil
 import threading
 from pathlib import Path
 
 from backend import logger
-from backend.paths import DOUYIN_CONFIG, DOUYIN_STICKERS, PROJECT_ROOT
+from backend.paths import DOUYIN_CONFIG, DOUYIN_STICKERS, PROJECT_ROOT, UI_STICKER_DIR
 
 POOL_FILE = PROJECT_ROOT / "config" / "message_pool.json"
+DEFAULT_TEXTS = (
+    "续火花 续火花 续火花",
+    "来续个火花 🔥",
+    "今天的火花续一下！",
+)
+DEFAULT_STICKER = "周三涵做表情154-超开心.png"
 _lock = threading.Lock()
 
-# 固定结尾：每条发出的话术都会带上（用户规范）
+# 老配置没有签名偏好时沿用原有默认值。
 SIGNATURE = "来自捞鱼自动续火花"
 
 
@@ -38,6 +45,17 @@ def _seed_from_douyin_config() -> dict:
         pool["stickers"] = [s for s in pool["stickers"] if s]
     except (OSError, json.JSONDecodeError, IndexError):
         pass
+    if not pool["texts"]:
+        pool["texts"] = list(DEFAULT_TEXTS)
+    if not pool["stickers"]:
+        default_sticker = DOUYIN_STICKERS / DEFAULT_STICKER
+        if not default_sticker.is_file():
+            bundled = UI_STICKER_DIR / DEFAULT_STICKER
+            if bundled.is_file():
+                DOUYIN_STICKERS.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(bundled, default_sticker)
+        if default_sticker.is_file():
+            pool["stickers"].append(DEFAULT_STICKER)
     return pool
 
 
@@ -72,19 +90,35 @@ def save_pool(texts: list, stickers: list, log: bool = True) -> dict:
 
 
 def pick_random() -> dict:
-    """随机抽一条：{"type":"text","content":...} 或 {"type":"image","abs_path":...}。
-    文本自动带固定结尾；图片返回独立结尾标记，由调用方决定追加方式。"""
+    """抽取原始话术，发送端按平台决定如何渲染签名。"""
     pool = get_pool()
     bag = ([{"type": "text", "content": t} for t in pool["texts"]]
            + [{"type": "image", "file": s} for s in pool["stickers"]])
     if not bag:
-        return {"type": "text", "content": "续火花啦 🔥\n" + SIGNATURE}
+        return {"type": "text", "content": "续火花啦 🔥"}
     item = random.choice(bag)
-    if item["type"] == "text":
-        item["content"] = item["content"] + "\n" + SIGNATURE
-    else:
+    if item["type"] == "image":
         item["abs_path"] = str(DOUYIN_STICKERS / item["file"])
     return item
+
+
+def signature_text(settings: dict) -> str:
+    if settings.get("signature_enabled") is False:
+        return ""
+    return str(settings.get("signature_text") or "").strip() or SIGNATURE
+
+
+def qq_message(item: dict, signature: str) -> str:
+    if item["type"] == "image":
+        message = "[CQ:image,file=file:///" + item["abs_path"].replace("\\", "/") + "]"
+        separator = " "
+    else:
+        message = item["content"]
+        separator = "\n"
+        base, _, tail = message.rpartition(separator)
+        if base and tail in {SIGNATURE, "——" + SIGNATURE, "——来自楼宇自动续火花", signature}:
+            message = base
+    return message + separator + signature if signature else message
 
 
 def douyin_choices() -> list:

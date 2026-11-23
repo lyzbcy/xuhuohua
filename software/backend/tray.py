@@ -37,9 +37,9 @@ def start(window, on_douyin, on_qq, on_quit):
             pystray.MenuItem("一键续抖音火花", dispatch(on_douyin, sending=True)),
             pystray.MenuItem("一键续 QQ 火花", dispatch(on_qq, sending=True)),
             pystray.Menu.SEPARATOR,
-            pystray.MenuItem("退出续火花控制台", dispatch(on_quit)),
+            pystray.MenuItem("退出捞鱼火花管家", dispatch(on_quit)),
         )
-        icon = pystray.Icon("xuhuohua", artwork, "续火花控制台", menu)
+        icon = pystray.Icon("xuhuohua", artwork, "捞鱼火花管家", menu)
         icon.run_detached()
         logger.info("[托盘] 已在右下角托盘运行", source="app")
         return icon

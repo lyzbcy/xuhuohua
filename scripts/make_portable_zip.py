@@ -15,10 +15,11 @@ OUT = ROOT / "xuhuohua-windows-x64.zip"
 EXCLUDE_DIR_NAMES = {".venv", ".venv-ci", "__pycache__", ".pytest_cache",
                      "artifacts", ".git", "build", "dist",
                      ".idea", ".vscode", "config", "cache", "logs",
-                     "storage_state", "qq-data", "desktop-logs"}
+                     "storage_state", "qq-data", "desktop-logs", "message-policy-assets"}
 # 注：node_modules 不排除——NapCat shell 自带的 Node 运行时依赖必须随包
 EXCLUDE_FILE_SUFFIX = (".pyc", ".log", ".tmp")   # 注意：不能排除 .zip——PyInstaller 的 base_library.zip 必须随包
-EXCLUDE_PRIVATE_FILES = {"notify-command", "notify-webhook", "notify-state.json", "qq-run-state.json",
+EXCLUDE_PRIVATE_FILES = {"notify-command", "notify-webhook", "notify-state.json", "qq-run-state.json", "message-policy.json",
+                         "xuhuohua-library.zip",
                          "qq-result.json", "douyin-schedule.json", "notification-result.json",
                          "douyin-browser-path", "douyin-headless-browser-path",
                          ".last-update-check", ".update.log", ".update.lock",

@@ -36,10 +36,14 @@ if (Test-Path $lockFile) {
 L "定时任务触发，开始运行"
 $cfgFile = Join-Path $projRoot "config\settings.json"
 $env:HEADLESS = "true"
+$env:XUHUOHUA_DESKTOP_SIGNATURE_MODE = "on"
+$env:XUHUOHUA_DESKTOP_SIGNATURE_TEXT = $null
 if (Test-Path $cfgFile) {
   try {
     $browserSettings = Get-Content $cfgFile -Raw -Encoding UTF8 | ConvertFrom-Json
     if ($browserSettings.browser_headless -eq $false) { $env:HEADLESS = "false" }
+    if ($false.Equals($browserSettings.signature_enabled)) { $env:XUHUOHUA_DESKTOP_SIGNATURE_MODE = "off" }
+    $env:XUHUOHUA_DESKTOP_SIGNATURE_TEXT = [string]$browserSettings.signature_text
   } catch { L "浏览器模式设置读取失败，使用默认无头模式" }
 }
 L ("浏览器模式：" + $(if ($env:HEADLESS -eq "true") { "无头" } else { "有头" }))

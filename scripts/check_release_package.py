@@ -44,6 +44,7 @@ def check(zip_path: Path) -> None:
             "/cloud-skill/xuhuohua-cloud/scripts/start-douyin-desktop.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/login-douyin.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/notify-result.py",
+            "/cloud-skill/xuhuohua-cloud/scripts/message_policy.py",
         )
         missing = [suffix for suffix in required if not any(n.endswith(suffix) for n in names)]
         if missing:
@@ -54,12 +55,12 @@ def check(zip_path: Path) -> None:
             parts = [part.lower() for part in name.split("/")]
             basename = parts[-1]
             if (basename.startswith(".env") or basename.startswith("storage-state")
-                    or basename in {"settings.json", "accounts.json",
+                    or basename in {"settings.json", "feedback-channel.json", "accounts.json",
                                     "notify-command", "notify-webhook", "notify-state.json",
                                     ".last-update-check", ".update.log", ".update.lock",
-                                    "qq-login-page.pid"}
+                                    "qq-login-page.pid", "message-policy.json", "xuhuohua-library.zip"}
                     or "storage_state" in parts or "artifacts" in parts
-                    or "qq-data" in parts):
+                    or "qq-data" in parts or "message-policy-assets" in parts):
                 forbidden.append(name)
         if forbidden:
             raise SystemExit("安装包包含敏感数据文件: " + str(len(forbidden)))

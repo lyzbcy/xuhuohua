@@ -3,90 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>续火花控制台</title>
+<title>捞鱼火花管家</title>
 <link rel="stylesheet" href="style.css">
+<script>if (/Windows/.test(navigator.userAgent)) document.documentElement.classList.add("windows-frame");</script>
 </head>
 <body>
 <div id="app">
+  <header class="window-chrome">
+    <div class="window-drag pywebview-drag-region" aria-hidden="true"></div>
+    <button class="window-control" type="button" data-window="minimize" aria-label="最小化" title="最小化">−</button>
+    <button class="window-control" type="button" data-window="toggle_maximize" aria-label="最大化" title="最大化"><span class="maximize-mark" aria-hidden="true"></span></button>
+    <button class="window-control window-close" type="button" data-window="close" aria-label="关闭窗口" title="关闭窗口">×</button>
+  </header>
+  <div class="window-resize" aria-hidden="true"></div>
   <!-- 侧边栏 -->
   <aside class="sidebar">
     <div class="brand">
-      <img src="assets/第8弹-想你.png" alt="logo" class="brand-logo">
-      <div>
-        <div class="brand-name">续火花控制台</div>
-        <div class="brand-sub">QQ · 抖音 一站续火</div>
-      </div>
+      <img src="assets/spark-logo.png" alt="" class="brand-logo">
+      <span class="brand-name">捞鱼火花管家</span>
     </div>
-    <nav class="nav">
-      <button class="nav-item active" data-page="dashboard">🏠 仪表盘</button>
-      <button class="nav-item" data-page="douyin">🎵 抖音</button>
-      <button class="nav-item" data-page="qq">🐧 QQ</button>
-      <button class="nav-item" data-page="pool">💬 话术库</button>
-      <button class="nav-item" data-page="schedule">⏰ 定时</button>
-      <button class="nav-item" data-page="logs">📋 日志</button>
-      <button class="nav-item" data-page="settings">⚙️ 设置</button>
-      <button class="nav-item" data-page="about">🐟 关于</button>
+    <nav class="nav" aria-label="主导航">
+      <button class="nav-item active" data-page="dashboard" aria-current="page"><span aria-hidden="true">⌂</span>总览</button>
+      <button class="nav-item" data-page="douyin"><img class="nav-platform" src="assets/douyin-brand.png" alt="">抖音</button>
+      <button class="nav-item" data-page="qq"><img class="nav-platform" src="assets/qq-brand.png" alt="">QQ</button>
+      <button class="nav-item" data-page="schedule"><span aria-hidden="true">▦</span>定时任务</button>
+      <button class="nav-item" data-page="pool"><span aria-hidden="true">✎</span>话术与签名</button>
+      <button class="nav-item" data-page="cloud"><span aria-hidden="true">☁</span>云端 Skill</button>
+      <button class="nav-item" data-page="principle"><span aria-hidden="true">✧</span>原理讲解</button>
+      <button class="nav-item" data-page="settings"><span aria-hidden="true">⚙</span>设置</button>
     </nav>
-    <div class="sidebar-foot">v<span id="ver-foot">…</span> · 捞鱼工作室</div>
+    <div class="sidebar-bottom">
+      <button class="nav-item" type="button" id="open-feedback"><span aria-hidden="true">☏</span>遇到问题反馈</button>
+      <div class="sidebar-foot">v<span id="ver-foot">…</span></div>
+    </div>
   </aside>
 
   <!-- 主区域 -->
   <main class="main">
     <!-- 仪表盘 -->
     <section class="page active" id="page-dashboard">
-      <h2>仪表盘</h2>
-      <div class="notice-banner" role="note"><strong>📢 自动续火花须知</strong><br>
-        注册定时任务后，软件到点可以关闭，但电脑须开机联网、保持 Windows 已登录且不休眠。杀毒软件可能拦截任务；控制台与独立自检任务会检查并恢复异常丢失的计划任务，首页主动删除的任务不会自动恢复。若程序或脚本被隔离，需在杀毒软件里手动添加信任。
-      </div>
-      <div class="cards">
-        <div class="card" id="card-douyin">
-          <div class="card-title">🎵 抖音</div>
-          <div class="card-status" id="dash-douyin">检查中…</div>
-          <div class="card-sub" id="dash-douyin-sub"></div>
+      <h2 class="overview-title"><span class="flame" aria-hidden="true"></span>今日续火花</h2>
+      <div class="overview-grid">
+        <div class="overview-body">
+          <div class="platforms">
+            <article class="card platform-card">
+              <div class="platform-header">
+                <img class="platform-icon" src="assets/douyin-brand.png" alt="">
+                <h3>抖音</h3><span class="pill" id="dash-douyin">读取中</span>
+              </div>
+              <dl class="platform-details">
+                <div><dt>下次运行</dt><dd id="dash-douyin-next">—</dd></div>
+                <div><dt>上次结果</dt><dd id="dash-douyin-last">—</dd></div>
+              </dl>
+              <button class="btn platform-action" id="dash-run" disabled>读取中</button>
+            </article>
+            <article class="card platform-card">
+              <div class="platform-header">
+                <img class="platform-icon" src="assets/qq-brand.png" alt="">
+                <h3>QQ</h3><span class="pill" id="dash-qq">读取中</span>
+              </div>
+              <dl class="platform-details">
+                <div><dt>下次启动</dt><dd id="dash-qq-next">—</dd></div>
+                <div><dt>上次结果</dt><dd id="dash-qq-last">—</dd></div>
+              </dl>
+              <button class="btn primary platform-action" id="dash-qq-send">立即续火花</button>
+            </article>
+          </div>
+          <section class="panel overview-panel" aria-labelledby="plan-title">
+            <div class="panel-heading">
+              <h3 id="plan-title"><span aria-hidden="true">▦</span>任务计划</h3>
+              <button class="btn small" id="dash-edit-plan">编辑计划</button>
+            </div>
+            <table class="overview-table">
+              <thead><tr><th scope="col">任务</th><th scope="col">执行时间</th><th scope="col">状态</th></tr></thead>
+              <tbody id="dash-plan"><tr><td colspan="3">正在读取任务…</td></tr></tbody>
+            </table>
+          </section>
+          <section class="panel overview-panel" aria-labelledby="results-title">
+            <div class="panel-heading">
+              <h3 id="results-title"><span aria-hidden="true">◷</span>最近执行结果</h3>
+              <button class="btn text-button" id="dash-view-logs">查看日志 <span aria-hidden="true">›</span></button>
+            </div>
+            <table class="overview-table">
+              <thead><tr><th scope="col">执行时间</th><th scope="col">平台</th><th scope="col">执行结果</th></tr></thead>
+              <tbody id="dash-results"><tr><td colspan="3">正在读取执行结果…</td></tr></tbody>
+            </table>
+          </section>
         </div>
-        <div class="card" id="card-qq">
-          <div class="card-title">🐧 QQ</div>
-          <div class="card-status" id="dash-qq">检查中…</div>
-          <div class="card-sub" id="dash-qq-sub"></div>
-        </div>
-        <div class="card">
-          <div class="card-title">⏰ 每日定时</div>
-          <div class="card-status" id="dash-sched">检查中…</div>
-          <div class="card-sub" id="dash-sched-sub"></div>
-        </div>
-      </div>
-      <div class="btn-row">
-        <button class="btn primary" id="dash-run">🔥 立即续抖音火花</button>
-        <button class="btn primary" id="dash-qq-send">🔥 立即续火花（QQ）</button>
-        <button class="btn" id="dash-dryrun">🧪 抖音演练（不真发）</button>
-        <button class="btn" id="dash-qq-start">🐧 启动 QQ</button>
-      </div>
-      <div class="panel">
-        <div class="panel-title">已注册的定时任务</div>
-        <div id="dash-tasks" aria-live="polite">正在读取 Windows 任务计划…</div>
-        <div class="btn-row">
-          <button class="btn" id="dash-tasks-refresh">刷新任务</button>
-          <button class="btn danger" id="dash-tasks-delete" disabled>删除所选任务</button>
-          <span id="dash-tasks-note" class="hint"></span>
-        </div>
-        <div id="dash-tasks-disabled"></div>
-        <p class="hint">只显示本软件注册的 Windows 任务。手动删除后，自检不会重新创建；可点击恢复重新启用。QQ 发送时间由 QQ 配置管理，删除 QQ 自动启动任务会停止每天自动拉起引擎。</p>
-      </div>
-      <div class="panel">
-        <div class="panel-title">每日计划（到点自动执行）</div>
-        <div id="dash-plan"></div>
-        <p class="hint">到点时电脑需开机且联网。改时间：抖音在「定时」页，QQ 在「QQ」页。</p>
-      </div>
-      <div class="panel">
-        <div class="panel-title">实时动态</div>
-        <div class="feed" id="dash-feed"></div>
+        <aside class="panel upcoming overview-panel" aria-labelledby="upcoming-title">
+          <div class="panel-heading"><h3 id="upcoming-title"><span aria-hidden="true">▦</span>下一次计划任务</h3></div>
+          <div id="dash-upcoming">正在读取任务…</div>
+        </aside>
       </div>
     </section>
 
     <!-- 抖音 -->
     <section class="page" id="page-douyin">
       <h2>抖音续火花</h2>
-      <div class="panel" id="dy-env-panel" style="display:none;border:2px solid #e8a013;background:#fffdf3">
+      <div class="panel" id="dy-env-panel" style="display:none">
         <div class="panel-title">⚡ 首次使用：初始化引擎（全自动下载，约 5-10 分钟）</div>
         <p class="hint">缺什么会自动下载什么（Python、抖音依赖、浏览器组件、QQ 引擎），全程无需操作、不弹任何窗口，进度实时显示在下面。<b>可以最小化软件去忙别的，装完会有提示。</b></p>
         <div class="btn-row">
@@ -110,7 +124,7 @@
           <button class="btn small" id="dy-fetch-friends">📥 从抖音拉取最近会话</button>
         </div>
         <div id="dy-fetch-area" style="display:none">
-          <input type="text" id="dy-fetch-search" placeholder="🔍 输入名字过滤…" style="width:100%;padding:8px 10px;border:1px solid #dcdfe8;border-radius:8px;margin:8px 0">
+          <input type="text" id="dy-fetch-search" placeholder="🔍 输入名字过滤…" class="friend-search">
           <div class="chk-grid" id="dy-fetch-list"></div>
           <div class="btn-row"><button class="btn small primary" id="dy-fetch-add">✔ 添加勾选的好友</button></div>
         </div>
@@ -167,7 +181,7 @@
           <button class="btn small" id="qq-fetch-friends">📥 从 QQ 拉取好友列表</button>
         </div>
         <div id="qq-fetch-area" style="display:none">
-          <input type="text" id="qq-fetch-search" placeholder="🔍 输入名字/备注过滤…" style="width:100%;padding:8px 10px;border:1px solid #dcdfe8;border-radius:8px;margin:8px 0">
+          <input type="text" id="qq-fetch-search" placeholder="🔍 输入名字/备注过滤…" class="friend-search">
           <div class="chk-grid" id="qq-fetch-list"></div>
           <div class="btn-row"><button class="btn small primary" id="qq-fetch-add">✔ 添加勾选的好友</button></div>
         </div>
@@ -196,8 +210,8 @@
 
     <!-- 话术库 -->
     <section class="page" id="page-pool">
-      <h2>话术库（QQ 和抖音共用）</h2>
-      <p class="hint">每天每位好友从下面的池子里<b>随机抽 1 条</b>发出，两边共用这一套。全在本地完成，不调用任何 AI 接口。抖音的好友名单在「抖音」页管理。<b>每条消息结尾会自动带上「来自捞鱼自动续火花」</b>，无需手动添加。</p>
+      <h2>话术与签名</h2>
+      <p class="hint">每天每位好友从下面的池子里<b>随机抽 1 条</b>发出，两边共用这一套。全在本地完成，不调用任何 AI 接口。抖音的好友名单在「抖音」页管理。</p>
       <div class="panel">
         <div class="panel-title">文字话术</div>
         <div id="pool-texts"></div>
@@ -213,11 +227,32 @@
         <button class="btn primary" id="pool-save">💾 保存话术库</button>
         <span class="hint" id="pool-note"></span>
       </div>
+      <div class="panel">
+        <div class="panel-title">发送签名</div>
+        <label><input type="checkbox" id="signature-enabled" checked> 为 QQ 和抖音的消息添加签名</label>
+        <div class="btn-row">
+          <input type="text" id="signature-text" aria-label="自定义签名">
+          <button class="btn" type="button" id="signature-save">保存签名</button>
+        </div>
+        <p class="hint" id="signature-note" role="status">签名默认开启。留空使用默认签名。</p>
+      </div>
     </section>
 
     <!-- 定时 -->
     <section class="page" id="page-schedule">
-      <h2>每日定时</h2>
+      <h2>定时任务</h2>
+      <div class="panel" id="schedule-management">
+        <div class="panel-title">已注册的定时任务</div>
+        <div id="dash-tasks" aria-live="polite">正在读取 Windows 任务计划…</div>
+        <div class="btn-row">
+          <button class="btn" id="dash-tasks-refresh">刷新任务</button>
+          <button class="btn danger" id="dash-tasks-delete" disabled>删除所选任务</button>
+          <span id="dash-tasks-note" class="hint"></span>
+        </div>
+        <div id="dash-tasks-disabled"></div>
+        <p class="hint">只显示本软件注册的 Windows 任务。手动删除后，自检不会重新创建；可点击恢复重新启用。QQ 发送时间由 QQ 配置管理，删除 QQ 自动启动任务会停止每天自动拉起引擎。</p>
+      </div>
+
       <div class="panel">
         <div class="panel-title">抖音侧定时任务</div>
         <div class="status-line" id="sched-status"></div>
@@ -243,7 +278,13 @@
       </div>
     </section>
     <section class="page" id="page-logs">
-      <h2>运行日志</h2>
+      <div class="section-heading">
+        <h2>运行日志</h2><button class="btn small" data-open-page="dashboard">返回总览</button>
+      </div>
+      <div class="panel">
+        <div class="panel-title">本次启动后的实时动态</div>
+        <div class="feed" id="dash-feed"></div>
+      </div>
       <div class="btn-row">
         <button class="btn small" id="log-refresh">🔄 刷新</button>
         <button class="btn small" id="log-open">📂 打开日志文件夹</button>
@@ -261,7 +302,9 @@
 
     <!-- 设置 -->
     <section class="page" id="page-settings">
-      <h2>设置</h2>
+      <div class="section-heading">
+        <h2>设置</h2><button class="btn small" data-open-page="about">关于与更新</button>
+      </div>
       <div class="panel">
         <div class="panel-title">🌐 抖音浏览器模式</div>
         <div class="form-row"><label for="browser-mode">发送与演练</label>
@@ -290,17 +333,51 @@
         <p class="hint">杀毒软件可能拦截或隔离定时任务、程序或脚本。软件启动时会检查并修复丢失的任务；若程序本身被隔离，请在杀毒软件里手动添加信任，然后重新打开软件。</p>
         <div class="btn-row"><button class="btn" id="sched-repair">🔧 立即检查并修复计划任务</button><span class="hint" id="sched-repair-note"></span></div>
       </div>
-      <div class="panel">
-        <div class="panel-title">☁️ 云服务器 Skill（QQ + 抖音）</div>
-        <p class="hint">复制按钮会读取 GitHub 最新 Release 发布的 Prompt。云端 Agent 按它下载并校验 Skill 包，先询问是否启用 QQ、抖音及各自时间，再引导扫码和配置。QQ 提供自动刷新的扫码网页，重启后还会验证登录态；抖音默认提供 noVNC 浏览器链接供你扫码或完成人脸验证，确认登录后关闭临时桌面。也可导出离线包。</p>
-        <div class="btn-row"><button class="btn" id="cloud-export">📦 导出离线包（可选）</button><button class="btn primary" id="cloud-copy">📋 复制云端部署 Prompt</button></div>
-        <p class="hint" id="cloud-note"></p>
+    </section>
+
+    <section class="page" id="page-cloud">
+      <h2>云端 Skill</h2>
+      <div class="panel cloud-card">
+        <div class="panel-title">让服务器接班</div>
+        <p class="hint">把部署提示词发给你的云端 Agent。它会引导你选择 QQ 或抖音，设置时间并扫码。之后由服务器到点运行。</p>
+        <div class="btn-row">
+          <button class="btn primary" id="cloud-copy">复制部署提示词</button>
+          <button class="btn" id="cloud-export">导出离线部署包</button>
+        </div>
+        <p class="hint" id="cloud-note" role="status"></p>
       </div>
+      <div class="panel cloud-card">
+        <div class="panel-title">同步当前话术库和表情</div>
+        <p class="hint">同步包包含已保存的文字、签名、精选表情原图和勾选状态。把文件交给你自己的云端 Agent 导入，QQ 和抖音会在下次定时使用。</p>
+        <div class="btn-row"><button class="btn primary" id="cloud-policy">导出话术与表情</button></div>
+        <code class="cloud-command">python3 xuhuohua-cloud/scripts/message_policy.py import xuhuohua-library.zip</code>
+        <p class="hint" id="cloud-library-note" role="status"></p>
+      </div>
+    </section>
+
+    <section class="page" id="page-principle">
+      <article class="sketchbook" aria-labelledby="principle-title">
+        <header class="sketch-header">
+          <div><h2 id="principle-title">火花是怎么续上的？</h2><p>像把一张小纸条，按时送给朋友。</p></div>
+          <img src="assets/guide/hello.png" alt="星星布丁挥手打招呼">
+        </header>
+        <div class="sketch-story">
+          <section class="sketch-card"><img src="assets/guide/happy.png" alt="开心的星星布丁"><div><h3>先装好小纸条</h3><p>你挑好文字和表情，选定朋友和时间。小助手就有了一只自己的纸条盒。</p></div></section>
+          <section class="sketch-card"><img src="assets/guide/morning.png" alt="早呀"><div><h3>到点响铃</h3><p>时间一到，电脑或云服务器叫醒小助手。云端接班时，你的电脑可以关着。</p></div></section>
+          <section class="sketch-card"><img src="assets/guide/arrive.png" alt="星星布丁张开双手"><div><h3>进门送一张</h3><p>你扫码授权后，小助手用保存的登录状态，进 QQ 或抖音找到朋友，从你勾选的内容里抽一张发出去。</p></div></section>
+          <section class="sketch-card"><img src="assets/guide/work.png" alt="今天辛苦了"><div><h3>看看送到了没</h3><p>QQ 会回看聊天记录。抖音会检查发送结果。遇到不确定的情况就记下来，免得再发一遍。</p></div></section>
+          <section class="sketch-card"><img src="assets/guide/night.png" alt="星星布丁盖着被子说晚安"><div><h3>送完就收工</h3><p>云端 QQ 用完就退出。下次如果登录失效，小助手会等你重新扫码。</p></div></section>
+          <section class="sketch-card"><img src="assets/guide/cheer.png" alt="星星布丁举着彩球加油"><div><h3>纸条一直由你挑</h3><p>文字和表情来自你保存的话术库。想换一封，随时去「话术与签名」改。</p></div></section>
+        </div>
+        <div class="sketch-actions"><button class="btn" data-open-page="pool">打开话术库</button><button class="btn" data-open-page="cloud">了解云端接班</button></div>
+      </article>
     </section>
 
     <!-- 关于 -->
     <section class="page" id="page-about">
-      <h2>关于</h2>
+      <div class="section-heading">
+        <h2>关于</h2><button class="btn small" data-open-page="settings">返回设置</button>
+      </div>
       <div class="panel">
         <div class="panel-title">版本与更新</div>
         <div class="status-line" id="about-version"></div>
@@ -331,6 +408,29 @@
         <div class="panel-title">安全提示</div>
         <p class="hint">登录凭证（storage-state.json / .env / QQ 登录态）等于账号密码，请勿外传。自动化请保持低频（每天 1 次、少量好友），以防平台风控。本项目仅供个人学习研究，禁止商用。</p>
       </div>
+    </section>
+    <section class="page" id="page-feedback">
+      <div class="section-heading">
+        <h2>遇到问题反馈</h2>
+        <button class="btn small" type="button" data-open-page="dashboard">返回总览</button>
+      </div>
+      <form class="panel feedback-form" id="feedback-form">
+        <p class="hint" id="feedback-version">读取软件版本…</p>
+        <label for="feedback-category">问题分类（选填）</label>
+        <select id="feedback-category">
+          <option value="">选择分类</option>
+          <option>登录与连接</option><option>定时任务</option><option>发送与签名</option>
+          <option>界面与操作</option><option>功能建议</option><option>其他</option>
+        </select>
+        <label for="feedback-message">留言</label>
+        <textarea id="feedback-message" rows="5" maxlength="1100" required placeholder="请描述遇到的问题、操作步骤或改进建议"></textarea>
+        <label class="feedback-log-option"><input type="checkbox" id="feedback-logs" checked> 附带脱敏诊断日志</label>
+        <p class="hint">诊断日志仅含时间、级别和模块，不包含账号、好友昵称、聊天内容或登录凭证。请勿在留言中填写密码或凭证。</p>
+        <div class="btn-row">
+          <button class="btn primary" type="submit" id="feedback-submit" disabled>发送到企业微信</button>
+          <span class="hint" id="feedback-result" role="status"></span>
+        </div>
+      </form>
     </section>
   </main>
 

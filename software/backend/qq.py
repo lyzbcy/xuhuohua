@@ -610,13 +610,10 @@ def qq_send_now() -> dict:
     if not raw_targets:
         return {"ok": False, "msg": "还没填对方 QQ 号：请在上方「对方 QQ 号」里填好并保存"}
     # 话术从共享话术池随机抽（QQ 与抖音共用），统一带固定结尾签名
-    from backend import pool as pool_mod
+    from backend import notify, pool as pool_mod
     item = pool_mod.pick_random()
-    if item["type"] == "text":
-        message = item["content"]            # pick_random 已内嵌签名
-    else:
-        message = "[CQ:image,file=file:///" + item["abs_path"].replace("\\", "/") + "] " + pool_mod.SIGNATURE
-    logger.info("[QQ] 本次抽取话术: {0}".format("图片表情+签名" if item["type"] == "image" else "文字+签名"), source="qq")
+    message = pool_mod.qq_message(item, pool_mod.signature_text(notify.get_settings()))
+    logger.info("[QQ] 本次抽取话术: " + ("图片表情" if item["type"] == "image" else "文字"), source="qq")
     port, token = http_cfg["port"], http_cfg["token"]
     login = _onebot_call(port, token, "get_login_info", timeout=5).get("data") or {}
     own_id = str(login.get("user_id", ""))

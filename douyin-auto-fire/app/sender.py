@@ -27,6 +27,7 @@ SEND_BUTTONS = (
     'button[aria-label*="发送"]',
     '[role="button"][aria-label*="发送"]',
 )
+IMAGE_UPLOAD_CONFIRM = '.semi-modal-wrap button[class*="MsgInputSendFileModalbtnSure"]'
 
 
 async def _dismiss_modal(page: Page) -> None:
@@ -194,9 +195,7 @@ async def send_image(page: Page, image_path: str) -> None:
     if file_input is None:
         raise PageOperationError("找不到图片上传控件")
     await file_input.set_input_files(image_path)
-    await page.wait_for_timeout(1_500)
-
-    await _trigger_send(page)
+    await _confirm_image_upload(page)
     try:
         # The image bubble appearing is only the *start* of confirmation: the
         # send may still be in flight or already failed. Anchor on the latest
@@ -204,12 +203,15 @@ async def send_image(page: Page, image_path: str) -> None:
         # to reach a real terminal state, exactly as text/sticker does. A mere
         # bubble count increase is not success (Issue #11).
         await page.wait_for_function(
-            """([selector, anchor]) => {
+            """([selector, anchor, oldContent]) => {
                 const message = document.querySelector(selector);
                 if (!message) return false;
-                return message.getAttribute('data-douyin-sender-anchor') !== anchor;
+                const content = message.querySelector('[data-e2e="msg-item-content"]') || message;
+                const isNew = message.getAttribute('data-douyin-sender-anchor') !== anchor ||
+                    content.innerHTML !== oldContent;
+                return isNew && !!content.querySelector('img');
             }""",
-            arg=[LATEST_OUTGOING_MESSAGE, before[0]],
+            arg=[LATEST_OUTGOING_MESSAGE, *before],
             timeout=15_000,
         )
         latest = page.locator(LATEST_OUTGOING_MESSAGE).first
@@ -218,6 +220,16 @@ async def send_image(page: Page, image_path: str) -> None:
         raise
     except Exception as exc:
         raise PageOperationError("图片消息已触发发送，但无法确认是否发送成功；为避免重复不会自动重试") from exc
+
+
+async def _confirm_image_upload(page: Page) -> None:
+    # Uploading opens a preview dialog with its own send button. The regular
+    # composer action dismisses dialogs and would cancel this attachment.
+    button = page.locator(IMAGE_UPLOAD_CONFIRM).first
+    try:
+        await button.click(timeout=12_000)
+    except Exception as exc:
+        raise PageOperationError("未能点击图片预览的发送按钮，请检查上传状态") from exc
 
 async def _restore_composer(page: Page, timeout_ms: int = 10_000) -> None:
     try:

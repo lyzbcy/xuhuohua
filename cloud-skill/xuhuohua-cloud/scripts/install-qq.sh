@@ -80,7 +80,11 @@ with path.open("a", encoding="utf-8") as out:
         out.write(f"NAPCAT_HOSTNAME={host}\n")
 path.chmod(0o600)
 PY
-docker compose -f "$skill/scripts/compose.qq.yaml" --project-directory "$skill" up -d
+compose_files=(-f "$skill/scripts/compose.qq.yaml")
+if [[ -f "$skill/compose.qq.local.yaml" ]]; then
+  compose_files+=(-f "$skill/compose.qq.local.yaml")
+fi
+docker compose "${compose_files[@]}" --project-directory "$skill" up -d
 
 # 删除旧版常驻拉起规则。QQ 从本版起只在任务时间内登录。
 existing="$(crontab -l 2>/dev/null || true)"

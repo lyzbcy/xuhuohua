@@ -1,6 +1,6 @@
 ---
 name: 续火花开发
-description: 全自动 QQ/抖音续火花项目的专属开发 Skill。当用户要开发、修改、排障、更新"续火花"项目（续火花控制台、火花保持、douyin-auto-fire、NapCat 插件、话术库、定时任务相关）时使用。项目根目录：E:\共享\创业\续火花
+description: 全自动 QQ/抖音续火花项目的专属开发 Skill。当用户要开发、修改、排障、更新"续火花"项目（续火花控制台、火花保持、douyin-auto-fire、NapCat 插件、话术库、定时任务相关）时使用。项目根目录：E:\共享\创业\01-捞鱼软件产品\续火花
 ---
 
 # 续火花项目开发 Skill
@@ -9,7 +9,7 @@ description: 全自动 QQ/抖音续火花项目的专属开发 Skill。当用户
 
 ## 接管开发时的动作顺序
 
-1. **先读** `E:\共享\创业\续火花\docs\agent.md`（索引，按需去读 reference 文档，别一次全读）
+1. **先读** `E:\共享\创业\01-捞鱼软件产品\续火花\docs\agent.md`（索引，按需去读 reference 文档，别一次全读）
 2. 看 `docs/TODO.md` 了解进度，`docs/开发日志.md` 了解最近改动
 3. 动手前确认改动属于哪层：
    - 界面/交互 → `software/ui/`（HTML/CSS/JS）
@@ -49,7 +49,7 @@ software/
 
 ```powershell
 # 启动软件（或双击根目录 启动续火花控制台.bat / 桌面快捷方式）
-cd E:\共享\创业\续火花\software; .\.venv\Scripts\python.exe main.py
+cd E:\共享\创业\01-捞鱼软件产品\续火花\software; .\.venv\Scripts\python.exe main.py
 # 无界面直调后端 API（开发自测）
 .\.venv\Scripts\python.exe -c "import sys; sys.path.insert(0,'.'); from main import Api; print(Api().get_state())"
 # 重建 QQ 插件（改了 napcat-plugin-auto-tasks 源码后）

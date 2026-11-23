@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """导出不含登录态的 Linux QQ/抖音云端部署包与可复制部署提示词。"""
+import hashlib
+import json
+import tempfile
 import zipfile
 import urllib.error
 import urllib.request
 from pathlib import Path
 
-from backend.paths import PROJECT_ROOT
+from backend.paths import DOUYIN_STICKERS, PROJECT_ROOT
 
 EXPORT_NAME = "xuhuohua-cloud.zip"
 LATEST_RELEASE_ASSET = "https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip"
@@ -30,7 +33,7 @@ def export_bundle() -> dict:
                      "qq-login-page.sh", "qq-login-page.py",
                      "prepare-douyin.sh", "start-douyin-desktop.sh",
                      "stop-douyin-desktop.sh", "login-douyin.sh",
-                     "configure-qq.py", "notify-result.py",
+                     "configure-qq.py", "notify-result.py", "message_policy.py",
                      "check-update.sh", "update-skill.py",
                      "configure-onebot.py", "qq-run.py", "upgrade-douyin-auth.py"))
     if not all(source.is_file() for source in selected):
@@ -52,6 +55,37 @@ def export_bundle() -> dict:
     return {"ok": True, "path": str(destination), "files": len(selected) + 1}
 
 
+def export_library(text_policy, selected, destination):
+    """Write a private content snapshot for transfer to the user's cloud Skill."""
+    images = sorted(DOUYIN_STICKERS.glob("*.png"))
+    if len(images) > 100:
+        raise ValueError("可同步的表情最多 100 张。")
+    assets = {}
+    total = 0
+    for path in images:
+        with path.open("rb") as stream:
+            data = stream.read(2_000_001)
+        total += len(data)
+        if len(data) > 2_000_000 or total > 24_000_000 or not data.startswith(b"\x89PNG\r\n\x1a\n"):
+            raise ValueError("表情须为 PNG，每张最多 2 MB，合计最多 24 MB。")
+        assets[path.name] = data
+    if any(name not in assets for name in selected):
+        raise ValueError("勾选的表情缺少原图，请先检查话术库。")
+    manifest = {"version": 1, "policy": text_policy, "selected_stickers": selected,
+                "stickers": {name: hashlib.sha256(blob).hexdigest() for name, blob in assets.items()}}
+    with tempfile.NamedTemporaryFile(dir=destination.parent, suffix=".tmp", delete=False) as stream:
+        pending = Path(stream.name)
+    try:
+        with zipfile.ZipFile(pending, "w", zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr("manifest.json", json.dumps(manifest, ensure_ascii=False, indent=2))
+            for name, data in assets.items():
+                archive.writestr("stickers/" + name, data)
+        pending.replace(destination)
+    finally:
+        pending.unlink(missing_ok=True)
+    return {"ok": True, "path": str(destination), "stickers": len(assets), "selected": len(selected)}
+
+
 def prompt() -> str:
     return f"""请在我的 Linux x86_64 云服务器部署续火花。
 
@@ -67,7 +101,7 @@ def prompt() -> str:
 1. QQ 首次登录默认提供 `qq-login-page.sh` 的实时二维码网页和 SSH 隧道，不反复发静态截图。持久化与重启验证后，再执行 `qq-run.py --session-check`；正式任务到点才启动 NapCat，若被顶下线则主动快速登录，发送结束或失败都自动退出并停止容器，平时不得用 watchdog 常驻 QQ。
 2. 抖音首次登录默认提供 noVNC 虚拟桌面浏览器链接和 SSH 隧道，用户确认完成后立即运行 `stop-douyin-desktop.sh` 关闭临时桌面；定时任务使用无头浏览器。
 3. 企业微信只使用群机器人 webhook 推送链接，可跳过；启用时私密保存并运行 `notify-result.py test`。同一天的 QQ、抖音结果合并为一条通知，列清给谁发送了什么；通知故障不改变任务结果。
-4. QQ 与抖音正文都自动追加 `来自捞鱼自动续火花`。QQ 只有在发送后按 message_id、本人账号和完整正文回查聊天记录一致时才能报告成功；回查失败不自动重发。
+4. QQ 与抖音默认追加 `来自捞鱼自动续火花`。QQ 只有在发送后按 message_id、本人账号和完整正文回查聊天记录一致时才能报告成功；回查失败不自动重发。需要同步桌面文字和签名时，使用 Skill 中的共享话术导入。
 5. 不在聊天、公开仓库、命令行参数或日志中展示 Cookie、Token、webhook key、登录态或好友配置。
 
 完成后报告平台、时间、登录与自动退出验收、cron、通知状态和日志位置。"""
