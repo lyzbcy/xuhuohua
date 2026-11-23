@@ -1,3 +1,4 @@
 playwright>=1.54,<2
 python-dotenv>=1.1,<2
 tzdata>=2025.2
+Pillow>=12,<13

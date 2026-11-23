@@ -32,6 +32,7 @@ https://github.com/lyzbcy/xuhuohua/releases/latest/download/xuhuohua-cloud.zip.s
 - 在桌面主导航「云端 Skill」点击「导出话术与表情」，通过私有通道把 ZIP 交给自己的云端 Agent。运行 `python3 xuhuohua-cloud/scripts/message_policy.py import /私有目录/xuhuohua-library.zip`，旧版仅含文字和签名的 JSON 也可导入。
 - 导入后使用 `python3 xuhuohua-cloud/scripts/message_policy.py status` 核对文字数、精选表情数、勾选数和签名状态。导入只更新共享素材配置，好友、任务时间和登录态仍由各自平台管理。配置与验收阶段不发消息。
 - 两平台从文字和已勾选的表情中抽取。QQ 每批选一份内容，抖音每位好友随机选一份。两者都为空时沿用原平台内容；`defaults` 可显式启用三条默认文字。签名可开启、关闭或自定义。
+- 两平台发送静态 PNG 表情时使用小于 30 KB 的副本，精选表情同步包保存原图。老部署升级 Skill 后需要按下文更新引擎和 Pillow 环境。
 - 共享配置保存在私有的 `message-policy.json`，表情原图位于 `message-policy-assets/`。升级时保留两者。QQ 图片发送后核对聊天记录与消息详情。若 OneBot 超时或未返回编号，会在本次发送时间窗内回查，并用取回的图片哈希核对原图。结果无法确认时不重发。
 
 ## 3. QQ 登录与定时

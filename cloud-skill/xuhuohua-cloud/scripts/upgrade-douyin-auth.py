@@ -7,10 +7,11 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import tempfile
 import zipfile
 
-FILES = ('app/auth_state.py', 'app/main.py', 'app/sender.py', 'scripts/login.py')
+FILES = ('app/auth_state.py', 'app/main.py', 'app/sender.py', 'app/sticker_transfer.py', 'scripts/login.py')
 
 
 @contextmanager
@@ -39,6 +40,14 @@ def replace(path, data, owner=None):
         Path(name).unlink(missing_ok=True)
 
 
+def ensure_image_dependency(engine):
+    python = engine/'.venv/bin/python'
+    if not python.is_file():
+        subprocess.run(['python3', '-m', 'venv', str(python.parent.parent)], check=True)
+    if subprocess.run([str(python), '-c', 'from PIL import Image'], capture_output=True).returncode:
+        subprocess.run([str(python), '-m', 'pip', 'install', 'Pillow>=12,<13'], check=True)
+
+
 def upgrade(root, package):
     package = Path(package)
     parts = package.with_name(package.name+'.sha256').read_text().split()
@@ -53,6 +62,7 @@ def upgrade(root, package):
         for name,data in files.items(): compile(data,name,'exec')
     engine = root/'douyin-auto-fire'
     with idle_engine(root):
+        ensure_image_dependency(engine)
         # Only these public files may change. All config, history, profiles and
         # credentials remain untouched, including other Douyin applications.
         backup = root/'auth-upgrade-backups'/datetime.now().strftime('%Y%m%d-%H%M%S-%f')

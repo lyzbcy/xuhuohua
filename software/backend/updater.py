@@ -2,9 +2,16 @@
 """版本与更新（依据 软件组件/自适应更新检测.md）：
 检查 = git fetch 比对本地/远端；更新 = ff-only pull + 依赖同步；失败兜底提示重试。
 """
+import json
+import re
+from urllib.request import Request, urlopen
+
 from backend import logger
 from backend.paths import CHANGELOG_FILE, DOUYIN_VENV_PY, UPSTREAM_REPOS, VERSION_FILE
 from backend.winproc import run_cmd
+
+RELEASE_API = "https://api.github.com/repos/lyzbcy/xuhuohua/releases/latest"
+RELEASE_PAGE = "https://github.com/lyzbcy/xuhuohua/releases"
 
 
 def get_version() -> str:
@@ -23,6 +30,22 @@ def get_changelog() -> str:
 
 def _git(repo, *args):
     return run_cmd(["git", "-C", str(repo)] + list(args), timeout=60)
+
+
+def check_public_release():
+    current = get_version()
+    try:
+        request = Request(RELEASE_API, headers={"User-Agent": "xuhuohua"})
+        with urlopen(request, timeout=10) as response:
+            release = json.loads(response.read(196608))
+        tag = release.get("tag_name", "")
+        if (not re.fullmatch(r"v\d+\.\d+\.\d+", tag) or release.get("draft") or release.get("prerelease")
+                or not any(a.get("name") == "xuhuohua-windows-x64.zip" for a in release.get("assets", []))):
+            raise ValueError("Windows release unavailable")
+        latest = tag[1:]
+        return {"current": current, "latest": latest, "url": f"{RELEASE_PAGE}/tag/{tag}"}
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {"current": current, "latest": "", "url": f"{RELEASE_PAGE}/latest"}
 
 
 def check_updates() -> dict:

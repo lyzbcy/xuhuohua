@@ -78,7 +78,10 @@ class CloudMessagePolicyTests(unittest.TestCase):
             self.assertIn("happy.png", summary)
             self.assertEqual(wire[1], {"type": "text", "data": {"text": tail}})
             encoded = wire[0]["data"]["file"].removeprefix("base64://")
-            self.assertEqual(policy.base64.b64decode(encoded), path.read_bytes())
+            sent = policy.base64.b64decode(encoded)
+            from app.sticker_transfer import compress_png
+            self.assertEqual(sent, compress_png(path.read_bytes()))
+            self.assertLess(len(sent), 30_000)
 
             with zipfile.ZipFile(bundle, "a") as archive:
                 archive.writestr("stickers/../extra.png", b"bad")

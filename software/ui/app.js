@@ -836,10 +836,11 @@ async function loadAbout() {
 $("#about-check").addEventListener("click", (e) => withBtn(e.target, async () => {
   $("#about-update-result").textContent = "检查中…（国内建议先开代理）";
   try {
-    const r = await call("check_updates");
-    const lines = Object.entries(r.repos || {})
-      .map(([k, v]) => `${k}：${v.update_available ? "有新版本 ⬆" : "已是最新 ✓"}${v.note ? "（" + v.note + "）" : ""}`);
-    $("#about-update-result").innerHTML = lines.map(esc).join("<br>") + "<br>" + esc(r.hint || "");
+    const r = await call("check_public_release");
+    $("#about-download").href = r.url;
+    $("#about-update-result").textContent = r.latest
+      ? "当前版本 v" + r.current + " · 最新公开版 v" + r.latest
+      : "暂时查不到最新公开版，请稍后再试或打开发布页。";
   } catch (err) { $("#about-update-result").textContent = "检查失败：" + err.message; }
 }));
 $("#about-apply").addEventListener("click", (e) => withBtn(e.target, async () => {

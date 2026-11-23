@@ -31,6 +31,8 @@ jobs:
           cd ../..
           node ../tests/test_qq_batch.cjs
           npm run build
+      - name: Install app dependencies
+        run: python -m pip install pywebview pystray==0.19.5 pyinstaller "Pillow>=12,<13"
       - name: Check Python and UI syntax
         shell: pwsh
         run: |
@@ -46,8 +48,6 @@ jobs:
         shell: bash
         run: |
           for file in cloud-skill/xuhuohua-cloud/scripts/*.sh; do bash -n "$file"; done
-      - name: Install app dependencies
-        run: python -m pip install pywebview pystray==0.19.5 pyinstaller
       - name: Build executable with bundled helpers and QQ plugin
         working-directory: software
         run: pyinstaller --noconfirm --clean xuhuohua.spec

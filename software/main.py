@@ -278,6 +278,9 @@ class Api:
         return {"version": updater.get_version(),
                 "changelog": updater.get_changelog()}
 
+    def check_public_release(self):
+        return updater.check_public_release()
+
     def check_updates(self):
         return updater.check_updates()
 

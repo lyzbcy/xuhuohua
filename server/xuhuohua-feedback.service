@@ -1,0 +1,22 @@
+[Unit]
+Description=Laoyu Xuhuohua private feedback relay
+After=network-online.target
+
+[Service]
+DynamicUser=true
+StateDirectory=xuhuohua-feedback
+EnvironmentFile=/etc/xuhuohua-feedback.env
+ExecStart=/usr/bin/python3 /opt/xuhuohua-feedback/current/feedback_relay.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+MemoryMax=64M
+CPUQuota=10%
+TasksMax=20
+RestrictAddressFamilies=AF_INET AF_UNIX
+
+[Install]
+WantedBy=multi-user.target

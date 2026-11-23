@@ -28,6 +28,7 @@ def check(zip_path: Path) -> None:
             "/_internal/backend/assets/auto-tasks/LICENSE",
             "/_internal/backend/assets/auto-tasks/webui/index.html",
             "/douyin-auto-fire/run.py",
+            "/douyin-auto-fire/app/sticker_transfer.py",
             "/cloud-skill/xuhuohua-cloud/SKILL.md",
             "/cloud-skill/xuhuohua-cloud/scripts/check-update.sh",
             "/cloud-skill/xuhuohua-cloud/scripts/update-skill.py",

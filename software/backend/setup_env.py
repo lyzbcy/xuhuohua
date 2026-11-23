@@ -85,7 +85,7 @@ def ensure_runtime() -> bool:
 def ensure_deps() -> bool:
     deps = DOUYIN_DIR / "deps"
     req = DOUYIN_DIR / "requirements.txt"
-    if (deps / "playwright" / "__init__.py").is_file():
+    if all((deps / module / "__init__.py").is_file() for module in ("playwright", "PIL")):
         _ensure_pth_deps()
         return True
     _step("2/5 准备 pip…")
@@ -197,7 +197,7 @@ def status() -> dict:
     missing = []
     if not DOUYIN_RUNTIME_PY.exists():
         missing.append("runtime")
-    if not (DOUYIN_DIR / "deps" / "playwright" / "__init__.py").is_file():
+    if not all((DOUYIN_DIR / "deps" / module / "__init__.py").is_file() for module in ("playwright", "PIL")):
         missing.append("deps")
     if not (DOUYIN_DIR / "deps" / ".chromium_done").exists():
         missing.append("chromium")

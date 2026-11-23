@@ -612,7 +612,11 @@ def qq_send_now() -> dict:
     # 话术从共享话术池随机抽（QQ 与抖音共用），统一带固定结尾签名
     from backend import notify, pool as pool_mod
     item = pool_mod.pick_random()
-    message = pool_mod.qq_message(item, pool_mod.signature_text(notify.get_settings()))
+    try:
+        message = pool_mod.qq_message(item, pool_mod.signature_text(notify.get_settings()))
+    except (OSError, ValueError, ImportError):
+        logger.fail("[QQ] 表情压缩失败，未发送图片", source="qq")
+        return {"ok": False, "msg": "表情压缩失败，未发送图片"}
     logger.info("[QQ] 本次抽取话术: " + ("图片表情" if item["type"] == "image" else "文字"), source="qq")
     port, token = http_cfg["port"], http_cfg["token"]
     login = _onebot_call(port, token, "get_login_info", timeout=5).get("data") or {}

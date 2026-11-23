@@ -12,6 +12,12 @@ docker info >/dev/null || { echo "当前用户无法访问 Docker；请配置 Do
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 skill="$here/xuhuohua-cloud"
+image_python="$here/douyin-auto-fire/.venv/bin/python"
+if ! python3 -c 'from PIL import Image' >/dev/null 2>&1 &&
+   ! "$image_python" -c 'from PIL import Image' >/dev/null 2>&1; then
+  [[ -x "$image_python" ]] || python3 -m venv "$here/douyin-auto-fire/.venv"
+  "$image_python" -m pip install 'Pillow>=12,<13'
+fi
 config="$skill/qq-data/config"
 plugin_id=napcat-plugin-auto-tasks
 target="$skill/qq-data/plugins/$plugin_id"

@@ -17,6 +17,7 @@ REQUIRED = {
     "xuhuohua-cloud/scripts/qq-login-page.sh",
     "xuhuohua-cloud/scripts/qq-login-page.py",
     "xuhuohua-cloud/scripts/configure-qq.py",
+    "douyin-auto-fire/app/sticker_transfer.py",
     "xuhuohua-cloud/scripts/configure-onebot.py",
     "xuhuohua-cloud/scripts/qq-run.py",
     "xuhuohua-cloud/scripts/message_policy.py",

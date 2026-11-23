@@ -10,8 +10,8 @@ skill="$here/xuhuohua-cloud"
 if [[ ! -f "$engine/run.py" || ! -f "$engine/requirements.txt" || ! -f "$engine/scripts/login.py" ]]; then
   echo "抖音引擎不完整，请重新下载云端 Release 包" >&2; exit 2
 fi
-if [[ ! -x "$engine/.venv/bin/python" ]] || ! "$engine/.venv/bin/python" -c 'import dotenv, playwright, tzdata' >/dev/null 2>&1; then
-  python3 -m venv "$engine/.venv"
+if [[ ! -x "$engine/.venv/bin/python" ]] || ! "$engine/.venv/bin/python" -c 'import dotenv, playwright, tzdata; from PIL import Image' >/dev/null 2>&1; then
+  [[ -x "$engine/.venv/bin/python" ]] || python3 -m venv "$engine/.venv"
   "$engine/.venv/bin/python" -m pip install -r "$engine/requirements.txt"
 fi
 # Select the revision required by THIS venv, not another installation's newest.

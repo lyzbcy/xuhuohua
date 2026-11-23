@@ -4,13 +4,20 @@
 抖音 config.json 的 random.choices 和 QQ 的发送内容都从这里生成。
 """
 import json
+import hashlib
 import random
 import shutil
+import sys
+import tempfile
 import threading
 from pathlib import Path
 
 from backend import logger
-from backend.paths import DOUYIN_CONFIG, DOUYIN_STICKERS, PROJECT_ROOT, UI_STICKER_DIR
+from backend.paths import DOUYIN_CONFIG, DOUYIN_DIR, DOUYIN_STICKERS, FROZEN, PROJECT_ROOT, UI_STICKER_DIR
+
+if not FROZEN:
+    sys.path.insert(0, str(DOUYIN_DIR))
+from app.sticker_transfer import MAX_STICKER_BYTES, compress_png
 
 POOL_FILE = PROJECT_ROOT / "config" / "message_pool.json"
 DEFAULT_TEXTS = (
@@ -110,7 +117,23 @@ def signature_text(settings: dict) -> str:
 
 def qq_message(item: dict, signature: str) -> str:
     if item["type"] == "image":
-        message = "[CQ:image,file=file:///" + item["abs_path"].replace("\\", "/") + "]"
+        path = Path(item["abs_path"])
+        if path.stat().st_size >= MAX_STICKER_BYTES:
+            original = path.read_bytes()
+            cache = PROJECT_ROOT / "config" / "sticker-transfer"
+            cache.mkdir(parents=True, exist_ok=True)
+            path = cache / (hashlib.sha256(original).hexdigest() + ".png")
+            if not path.is_file() or path.stat().st_size >= MAX_STICKER_BYTES:
+                payload = compress_png(original)
+                with tempfile.NamedTemporaryFile(dir=cache, delete=False) as stream:
+                    pending = Path(stream.name)
+                    try:
+                        stream.write(payload)
+                        stream.close()
+                        pending.replace(path)
+                    finally:
+                        pending.unlink(missing_ok=True)
+        message = "[CQ:image,file=file:///" + path.as_posix() + "]"
         separator = " "
     else:
         message = item["content"]

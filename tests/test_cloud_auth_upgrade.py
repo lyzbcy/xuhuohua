@@ -13,6 +13,11 @@ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 
 class UpgradeTests(unittest.TestCase):
+    def setUp(self):
+        install = patch.object(module, 'ensure_image_dependency')
+        install.start()
+        self.addCleanup(install.stop)
+
     def install(self,d):
         root=Path(d)/'release';engine=root/'douyin-auto-fire'
         (root/'xuhuohua-cloud').mkdir(parents=True)

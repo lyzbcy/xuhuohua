@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import random
 import secrets
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from playwright.async_api import Locator, Page
@@ -10,6 +11,7 @@ from playwright.async_api import Locator, Page
 from app.douyin import DouyinChat, PageOperationError, first_visible
 from app.models import Message, Sticker
 from app.selectors import IMAGE_INPUTS, MESSAGE_INPUTS, STICKER_BUTTONS, STICKER_PANELS
+from app.sticker_transfer import MAX_STICKER_BYTES, compress_png
 
 
 def _monotonic() -> float:
@@ -194,7 +196,7 @@ async def send_image(page: Page, image_path: str) -> None:
             break
     if file_input is None:
         raise PageOperationError("找不到图片上传控件")
-    await file_input.set_input_files(image_path)
+    await file_input.set_input_files(await asyncio.to_thread(sticker_upload, image_path))
     await _confirm_image_upload(page)
     try:
         # The image bubble appearing is only the *start* of confirmation: the
@@ -220,6 +222,17 @@ async def send_image(page: Page, image_path: str) -> None:
         raise
     except Exception as exc:
         raise PageOperationError("图片消息已触发发送，但无法确认是否发送成功；为避免重复不会自动重试") from exc
+
+
+def sticker_upload(image_path: str):
+    path = Path(image_path)
+    if path.suffix.lower() != ".png" or path.stat().st_size < MAX_STICKER_BYTES:
+        return image_path
+    try:
+        payload = compress_png(path.read_bytes())
+    except (OSError, ValueError, ImportError) as exc:
+        raise PageOperationError("表情压缩失败，未上传图片") from exc
+    return {"name": path.name, "mimeType": "image/png", "buffer": payload}
 
 
 async def _confirm_image_upload(page: Page) -> None:

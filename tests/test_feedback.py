@@ -1,4 +1,5 @@
 import json
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -9,6 +10,25 @@ from backend import feedback
 
 
 class FeedbackTests(unittest.TestCase):
+    def test_clean_install_uses_relay_and_checks_matching_receipt(self):
+        with patch.dict(os.environ, {"XUHUOHUA_FEEDBACK_WEBHOOK": ""}), \
+             patch.object(feedback, "CHANNEL_FILE", Path("missing-feedback-test-config.json")), \
+             patch.object(feedback, "build_opener") as opener, patch.object(feedback.logger, "ok"):
+            sent = []
+            def opened(request, **kwargs):
+                self.assertEqual(request.full_url, feedback.RELAY_URL)
+                body = json.loads(request.data)
+                self.assertTrue(body["text"]["content"].startswith("捞鱼火花管家 v"))
+                sent.append(body["request_id"])
+                result = {"errcode": 0, "state": "delivered", "request_id": body["request_id"]}
+                response = MagicMock()
+                response.__enter__.return_value.read.return_value = json.dumps(result).encode()
+                return response
+            opener.return_value.open.side_effect = opened
+            for _ in range(2):
+                self.assertTrue(feedback.send("捞鱼火花管家", "0.14.14", "", "测试反馈", False)["ok"])
+            self.assertEqual(sent[0], sent[1])
+
     @patch.object(feedback.logger, "ok")
     @patch.object(feedback.logger, "today_log_text",
                   return_value="[2026-11-23 16:00:00] [FAIL] [qq] 私聊正文和账号")

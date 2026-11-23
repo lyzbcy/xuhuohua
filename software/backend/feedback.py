@@ -2,6 +2,9 @@
 import json
 import os
 import re
+import threading
+import time
+import uuid
 from urllib.error import URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -11,6 +14,9 @@ from backend.paths import PROJECT_ROOT
 
 
 CHANNEL_FILE = PROJECT_ROOT / "config" / "feedback-channel.json"
+RELAY_URL = "https://111.231.25.152:8443/xuhuohua-feedback/feedback"
+_receipt_lock = threading.Lock()
+_last_request = None
 CATEGORIES = {"登录与连接", "定时任务", "发送与签名", "界面与操作", "功能建议", "其他"}
 MAX_MESSAGE_BYTES = 1100
 EVENT_LINE = re.compile(
@@ -25,18 +31,18 @@ def _endpoint():
         try:
             value = json.loads(CHANNEL_FILE.read_text(encoding="utf-8")).get("webhook", "")
         except (OSError, ValueError, AttributeError):
-            return ""
+            return RELAY_URL
     if not isinstance(value, str):
-        return ""
+        return RELAY_URL
     try:
         url = urlsplit(value)
     except ValueError:
-        return ""
+        return RELAY_URL
     if (url.scheme == "https" and url.netloc == "qyapi.weixin.qq.com"
             and url.path == "/cgi-bin/webhook/send" and not url.fragment
             and re.fullmatch(r"key=[a-zA-Z0-9_-]{12,100}", url.query)):
         return value
-    return ""
+    return RELAY_URL
 
 
 def available():
@@ -62,6 +68,15 @@ class _NoRedirect(HTTPRedirectHandler):
         return None
 
 
+def _request_id(content):
+    global _last_request
+    with _receipt_lock:
+        now = time.monotonic()
+        if _last_request is None or _last_request[0] != content or now - _last_request[2] >= 86400:
+            _last_request = (content, str(uuid.uuid4()), now)
+        return _last_request[1]
+
+
 def send(app, version, category, message, include_logs):
     message = str(message or "").strip()
     if not message:
@@ -72,21 +87,25 @@ def send(app, version, category, message, include_logs):
         return {"ok": False, "msg": "请选择有效的问题分类。"}
 
     url = _endpoint()
-    if not url:
-        return {"ok": False, "msg": "开发者反馈通道尚未配置。"}
-    lines = [f"【用户反馈】{app} v{version}"]
+    relay = url == RELAY_URL
+    lines = [f"{app} v{version}" if relay else f"【用户反馈】{app} v{version}"]
     if category:
         lines.append(f"分类：{category}")
     lines.append(message)
     if include_logs is True:
         lines.extend(["", *_diagnostics()])
-    payload = {"msgtype": "text", "text": {"content": "\n".join(lines)}}
+    content = "\n".join(lines)
+    payload = {"msgtype": "text", "text": {"content": content}}
+    if relay:
+        payload["request_id"] = _request_id(content)
     req = Request(url, data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
                   headers={"Content-Type": "application/json; charset=utf-8"}, method="POST")
     try:
-        with build_opener(_NoRedirect()).open(req, timeout=8) as response:
+        with build_opener(_NoRedirect()).open(req, timeout=23 if relay else 8) as response:
             result = json.loads(response.read(16384).decode("utf-8"))
-        if isinstance(result, dict) and result.get("errcode") == 0:
+        if (isinstance(result, dict) and result.get("errcode") == 0
+                and (not relay or (result.get("state") == "delivered"
+                                   and result.get("request_id") == payload["request_id"]))):
             logger.ok("用户反馈已由企微接收", source="feedback")
             return {"ok": True, "msg": "已发送到开发者的企业微信。"}
         logger.warn("企微拒绝接收用户反馈", source="feedback")

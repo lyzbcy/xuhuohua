@@ -18,7 +18,12 @@ def main() -> int:
         return 0
     from backend import notify, pool as pool_mod
     item = pool_mod.pick_random()
-    message = pool_mod.qq_message(item, pool_mod.signature_text(notify.get_settings()))
+    try:
+        message = pool_mod.qq_message(item, pool_mod.signature_text(notify.get_settings()))
+    except (OSError, ValueError, ImportError):
+        logger.warn("[轮换] 表情压缩失败，使用默认文字续火花", source="rotate")
+        item = {"type": "text", "content": pool_mod.DEFAULT_TEXTS[0]}
+        message = pool_mod.qq_message(item, pool_mod.signature_text(notify.get_settings()))
     # 只动 friendSpark_message 一个字段，其余内容合并保留
     data = json.loads(qq.PLUGIN_CONFIG_PATH.read_text(encoding="utf-8")) \
         if qq.PLUGIN_CONFIG_PATH.exists() else {}

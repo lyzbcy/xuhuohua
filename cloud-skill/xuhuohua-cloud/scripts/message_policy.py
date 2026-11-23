@@ -160,12 +160,36 @@ def qq_payload(legacy, settings, skill):
         blob = stream.read(MAX_IMAGE + 1)
     if len(blob) > MAX_IMAGE or hashlib.sha256(blob).hexdigest() != settings["stickers"][name]:
         raise ValueError("云端表情文件校验失败，请重新导入同步包")
-    image = base64.b64encode(blob).decode("ascii")
+    image = base64.b64encode(qq_sticker_bytes(blob)).decode("ascii")
     tail = signature(policy)
     payload = [{"type": "image", "data": {"file": "base64://" + image}}]
     if tail:
         payload.append({"type": "text", "data": {"text": tail}})
     return payload, "[表情] " + name + ("\n" + tail if tail else ""), tail
+
+
+def qq_sticker_bytes(blob):
+    engine = SKILL.parent / "douyin-auto-fire"
+    if not engine.is_dir():
+        engine = SKILL.parent.parent / "douyin-auto-fire"
+    if str(engine) not in sys.path:
+        sys.path.insert(0, str(engine))
+    from app.sticker_transfer import MAX_STICKER_BYTES, compress_png
+    try:
+        return compress_png(blob)
+    except ModuleNotFoundError as exc:
+        if exc.name != "PIL":
+            raise
+    try:
+        process = subprocess.run(
+            [str(engine / ".venv/bin/python"), str(engine / "app/sticker_transfer.py")],
+            input=blob, capture_output=True, timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ValueError("云端表情压缩失败，请检查 Pillow 依赖") from exc
+    if process.returncode or not process.stdout.startswith(PNG_HEADER) or len(process.stdout) >= MAX_STICKER_BYTES:
+        raise ValueError("云端表情压缩失败，请检查 Pillow 依赖")
+    return process.stdout
 
 
 def douyin_config(original, settings, skill=SKILL):

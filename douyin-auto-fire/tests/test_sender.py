@@ -619,6 +619,7 @@ async def test_send_image_fails_when_retry_appears(monkeypatch) -> None:
     page = _FakePage(timeline, content_count=1)
     monkeypatch.setattr(sender_module, "_mark_latest_outgoing_message", AsyncMock(return_value=("anchor", "old")))
     monkeypatch.setattr(sender_module, "_confirm_image_upload", AsyncMock())
+    monkeypatch.setattr(sender_module, "sticker_upload", lambda path: path)
 
     with pytest.raises(PageOperationError, match="发送失败"):
         await sender_module.send_image(page, "image.png")
@@ -636,6 +637,7 @@ async def test_send_image_waits_for_terminal_state(monkeypatch) -> None:
     page = _FakePage(timeline, content_count=1)
     monkeypatch.setattr(sender_module, "_mark_latest_outgoing_message", AsyncMock(return_value=("anchor", "old")))
     monkeypatch.setattr(sender_module, "_confirm_image_upload", AsyncMock())
+    monkeypatch.setattr(sender_module, "sticker_upload", lambda path: path)
 
     await sender_module.send_image(page, "image.png")  # must not raise
 
